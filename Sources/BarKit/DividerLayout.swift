@@ -30,28 +30,39 @@ public struct ItemPositions: Equatable, Sendable {
         let divider = divider ?? toggle + 1
         return ItemPositions(toggle: toggle, divider: divider, alwaysDivider: alwaysDivider ?? divider + 1)
     }
+
+    /// The chevron is the boundary: anything dragged past it should hide. So the divider
+    /// that does the hiding belongs directly left of the toggle, where macOS saves it at
+    /// most one toggle-width further left. Returns where to move it when an icon has been
+    /// dropped between them or the divider has strayed right of the toggle, else nil.
+    /// A freshly placed divider is saved just 1 further left until macOS rewrites it, so
+    /// anything up to a toggle-width away counts as in place.
+    public func dividerRepin(toggleWidth: Double) -> Double? {
+        let inPlace = divider > toggle && divider <= toggle + toggleWidth + Self.tolerance
+        return inPlace ? nil : toggle + 1
+    }
+
+    static let tolerance = 2.0
 }
 
-/// How wide each divider is and whether its line shows. A stretched divider pushes
-/// everything left of it off-screen.
+/// How wide each divider is and whether the always-hidden line shows. A stretched
+/// divider pushes everything left of it off-screen. The first divider never shows: the
+/// chevron beside it marks that boundary.
 public struct DividerLayout: Equatable, Sendable {
     public static let hiddenLength: CGFloat = 10_000
     public static let visibleLength: CGFloat = 12
 
     public var dividerLength: CGFloat
     public var alwaysDividerLength: CGFloat
-    public var showsDivider: Bool
     public var showsAlwaysDivider: Bool
 
     public init(reveal: Reveal, isPeeking: Bool, positions: ItemPositions) {
         let revealed = isPeeking || !reveal.isCollapsed
         let revealsAll = isPeeking || (revealed && reveal.showsAlwaysHidden)
-        dividerLength =
-            revealed ? Self.visibleLength : Self.length(hiding: positions.divider > positions.toggle)
+        dividerLength = revealed ? 0 : Self.length(hiding: positions.divider > positions.toggle)
         // Parked while collapsed too, so a reveal never flashes the always-hidden items.
         alwaysDividerLength =
             revealsAll ? Self.visibleLength : Self.length(hiding: positions.alwaysDivider > positions.divider)
-        showsDivider = revealed
         showsAlwaysDivider = revealsAll
     }
 

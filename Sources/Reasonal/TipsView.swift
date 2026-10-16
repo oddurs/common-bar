@@ -11,7 +11,7 @@ struct TipsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 tip(
                     "command",
-                    "Hold ⌘ over the menu bar and drag icons left of the line to hide them, or past the dotted line to keep them always hidden."
+                    "Hold ⌘ over the menu bar and drag icons past the chevron to hide them, or past the dotted line to keep them always hidden."
                 )
                 tip(
                     "cursorarrow.motionlines", "Hover, scroll down, or click empty menu bar space to show hidden icons."

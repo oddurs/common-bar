@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- Icons dragged just past the chevron now hide. Before, they had to go left of a separate line that could drift away from the chevron, and icons dropped between the two stayed visible. The chevron is now the edge, and the solid line is gone; the dotted always-hidden line is unchanged.
+
 ## [0.3.0] - 2026-10-16
 
 ### Added
