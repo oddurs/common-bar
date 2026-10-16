@@ -1,4 +1,5 @@
 import AppKit
+import BarKit
 
 /// Where things are in the menu bar. Points are global Cocoa coordinates. The window
 /// server reports top-left-origin frames, so its windows are matched by x and by the
@@ -27,6 +28,22 @@ enum MenuBar {
             window.layer == statusLayer && !names.contains(window.name)
                 && abs(window.frame.minY - top) < 1 && (window.frame.minX...window.frame.maxX).contains(p.x)
         }
+    }
+
+    /// Where the window server has put the chevron on `screen`, in Cocoa coordinates.
+    /// AppKit's own window for a status item doesn't report this on Tahoe; see
+    /// `ChevronLocator` for how it is recognised.
+    static func chevronFrame(on screen: NSScreen, chevronLength: CGFloat) -> NSRect? {
+        let top = topInWindowServer(of: screen)
+        let frames = windows(onScreenOnly: false)
+            .filter { $0.layer == statusLayer && abs($0.frame.minY - top) < 1 }
+            .map(\.frame)
+        guard
+            let found = ChevronLocator.chevron(
+                among: frames, screenWidth: screen.frame.width, chevronLength: chevronLength)
+        else { return nil }
+        let primaryTop = NSScreen.screens.first?.frame.maxY ?? 0
+        return NSRect(x: found.minX, y: primaryTop - found.maxY, width: found.width, height: found.height)
     }
 
     /// A menu or popover from any menu bar item is showing.
