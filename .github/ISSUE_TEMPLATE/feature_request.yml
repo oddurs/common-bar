@@ -1,0 +1,16 @@
+name: Feature request
+description: Suggest a behaviour or a change to how items are hidden and shown.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do that Common Bar doesn't support?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Suggested approach
+      description: Common Bar uses only public APIs and asks for no permissions; say if your idea would need either.
