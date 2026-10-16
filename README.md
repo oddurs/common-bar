@@ -7,7 +7,8 @@ Hide menu bar items behind an invisible divider. Hold ⌘ to rearrange. **[oddur
 
 - **One chevron, one invisible line.** Every item left of the line moves off-screen. Click the chevron to bring them back.
 - **An always-hidden section.** Items left of a second, dotted line stay hidden even when the rest are showing. ⌥-click the chevron to see them.
-- **No settings window.** You choose what hides by ⌘-dragging icons across the line, the same way macOS rearranges the menu bar.
+- **Arranged where it lives.** You choose what hides by ⌘-dragging icons across the line, the same way macOS rearranges the menu bar.
+- **A small Settings window.** Open at login, how long revealed items stay, and which gestures reveal them.
 - **Several ways to reveal.** Rest the pointer on empty menu bar space, click it, or swipe down on the bar. Swipe up to hide.
 - **Tidies up after itself.** Hidden items go away again after a few seconds, but never while you're still working in the menu bar or one of its menus.
 - **Keeps the chevron on screen.** If you drag the line right of the chevron, collapsing leaves the chevron where you can reach it.
@@ -25,7 +26,7 @@ Requires macOS 14 or later.
    xattr -dr com.apple.quarantine "/Applications/Common Bar.app"
    ```
 
-3. Right-click the chevron and choose **Open at Login**.
+3. Right-click the chevron, choose **Settings…**, and turn on **Open at Login**.
 
 ## Usage
 
@@ -34,17 +35,15 @@ On first launch the hidden items are shown along with a short set of tips. **How
 - **Choose what hides:** hold ⌘ over the menu bar and drag icons left of the line to hide them, past the dotted line to keep them always hidden, or right of the line to keep them visible.
 - **Show hidden items:** click the chevron, click empty menu bar space, rest the pointer on empty menu bar space, or swipe down on the menu bar.
 - **Show always-hidden items too:** ⌥-click the chevron. ⌥-click again, or click the chevron, to hide everything.
-- **Hide them again:** click the chevron or empty space, or swipe up. Items shown by a click or swipe hide after 8 seconds, but not while the pointer is in the menu bar, a menu is open, or a mouse button is held. Items shown by hovering hide half a second after the pointer leaves the menu bar.
+- **Hide them again:** click the chevron or empty space, or swipe up. Items shown by a click or swipe hide after 10 seconds by default, but not while the pointer is in the menu bar, a menu is open, or a mouse button is held. Items shown by hovering hide half a second after the pointer leaves the menu bar.
 - **Rearrange at any time:** hold ⌘ over the menu bar. Both lines and every hidden item appear until you let go, and stay put mid-drag.
-- **Menu:** right-click (or Control-click) the chevron for **How to Arrange…**, **Open at Login**, and **Quit**.
+- **Menu:** right-click (or Control-click) the chevron for **How to Arrange…**, **Settings…**, and **Quit Common Bar**.
 
-Hover, click, and swipe can each be turned off from Terminal:
+**Settings** opens from that menu (⌘,) or by opening Common Bar again while it runs:
 
-```sh
-defaults write com.oddurs.reasonal showOnHover -bool false
-defaults write com.oddurs.reasonal showOnClick -bool false
-defaults write com.oddurs.reasonal showOnScroll -bool false
-```
+- **Open at Login**.
+- **Hide Again After:** 5 seconds, 10 seconds (the default), 30 seconds, 1 minute, or Never.
+- **Show Hidden Icons When:** hovering over empty menu bar space, scrolling down on the menu bar, or clicking empty menu bar space. Each can be turned off.
 
 More in the [documentation](https://oddurs.github.io/common-tools/bar/docs/).
 

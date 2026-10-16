@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-16
+
+### Added
+
+- A Settings window. Open it with **Settings…** (⌘,) in the chevron's right-click menu, or by opening Common Bar again while it runs.
+- **Hide Again After:** choose 5 seconds, 10 seconds, 30 seconds, 1 minute, or Never.
+- **Show Hidden Icons When:** turn hovering, scrolling down, and clicking empty menu bar space on or off one by one.
+
+### Changed
+
+- **Open at Login** moved from the right-click menu to Settings.
+- Revealed items hide again after 10 seconds by default, up from 8.
+
 ## [0.1.0] - 2026-10-16
 
 ### Added
@@ -18,5 +31,6 @@ All notable changes to this project are documented here. The format follows [Kee
 - First-launch tips, also available from **How to Arrange…** in the right-click menu, along with **Open at Login** and **Quit**.
 - Universal (Apple silicon and Intel) builds for macOS 14 and later.
 
-[Unreleased]: https://github.com/oddurs/common-bar/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/oddurs/common-bar/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/oddurs/common-bar/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/oddurs/common-bar/releases/tag/v0.1.0
