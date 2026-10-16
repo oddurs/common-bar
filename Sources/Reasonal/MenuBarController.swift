@@ -367,7 +367,7 @@ final class MenuBarController: NSObject {
         menu.addItem(.separator())
 
         menu.addItem(
-            NSMenuItem(title: "Quit Reasonal", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+            NSMenuItem(title: "Quit Common Bar", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
         toggle.menu = menu
         toggle.button?.performClick(nil)
