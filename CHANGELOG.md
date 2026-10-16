@@ -4,15 +4,6 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
-### Changed
-
-- Quieter menu bar icons: a smaller chevron and a finer dotted line.
-- The always-hidden section is optional and off by default. Turn it on with **Always-hidden section** in Settings → General. While it's off there's no dotted line, ⌥-click acts like a click, and icons that were behind the dotted line hide and show with the rest. Turning it back on restores where the line was.
-
-### Fixed
-
-- Icons dragged just past the chevron now hide. Before, they had to go left of a separate line that could drift away from the chevron, and icons dropped between the two stayed visible. The chevron is now the edge, and the solid line is gone; the dotted always-hidden line is unchanged.
-
 ## [0.3.0] - 2026-10-16
 
 ### Added
@@ -23,6 +14,12 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - Settings follows the layout shared by the Common Tools apps: **Show Hidden Icons When** first, then **General** with **Open at login** and **Hide again after**, then **Common Tools**. Labels are in sentence case, as in System Settings.
 - A failure to change **Open at login** shows under the General section instead of in an alert.
+- Quieter menu bar icons: a smaller chevron and a finer dotted line.
+- The always-hidden section is optional and off by default. Turn it on with **Always-hidden section** in Settings → General. While it's off there's no dotted line, ⌥-click acts like a click, and icons that were behind the dotted line hide and show with the rest. Turning it back on restores where the line was.
+
+### Fixed
+
+- Icons dragged just past the chevron now hide. Before, they had to go left of a separate line that could drift away from the chevron, and icons dropped between the two stayed visible. The chevron is now the edge, and the solid line is gone; the dotted always-hidden line is unchanged.
 
 ## [0.2.1] - 2026-10-16
 
