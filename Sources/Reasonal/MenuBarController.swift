@@ -14,12 +14,17 @@ final class MenuBarController: NSObject {
         static let dividerLength: CGFloat = 12
         static let toggleLength: CGFloat = 24
         static let peekDelay: TimeInterval = 0.2
+        static let hoverDelay: TimeInterval = 0.25
+        static let hoverExitDelay: TimeInterval = 0.5
+        static let scrollThreshold: CGFloat = 6
+        static let scrollGestureGap: TimeInterval = 0.3
         static let pollInterval: TimeInterval = 1.0 / 30
         static let autoCollapse: TimeInterval = 8
         static let fadeDuration: TimeInterval = 0.12
     }
 
     private static let onboardedKey = "onboarded"
+    private static let itemNames: Set<String> = ["toggle", "divider"]
 
     private let toggle: NSStatusItem
     private let divider: NSStatusItem
@@ -30,10 +35,22 @@ final class MenuBarController: NSObject {
     private var commandHeldSince: Date?
     private var poll: Timer?
     private var collapseTimer: Timer?
-    private var mouseMonitor: Any?
+    private var eventMonitor: Any?
     private var tipsPopover: NSPopover?
 
+    // Hover
+    private var revealedByHover = false
+    private var hoverArmed = true
+    private var hoverSince: Date?
+    private var hoverExitSince: Date?
+
+    // Scroll
+    private var scrollTotal: CGFloat = 0
+    private var scrollHandled = false
+    private var lastScroll: TimeInterval = 0
+
     override init() {
+        Preferences.register()
         // Without a saved position a new item lands at the far left, which on a crowded
         // notched display is behind the notch. Start both beside the system items.
         Self.seedPosition(0, for: "toggle")
@@ -63,10 +80,12 @@ final class MenuBarController: NSObject {
         divider.button?.appearsDisabled = true
         divider.button?.setAccessibilityLabel("Hidden items divider")
 
-        // Mouse events need no permission; the modifier check happens in the poll,
-        // which only runs while the pointer is in the menu bar.
-        mouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] _ in
-            MainActor.assumeIsolated { self?.pointerMoved() }
+        // Mouse and scroll events need no permission. Modifiers and hover are polled,
+        // only while the pointer is in the menu bar.
+        eventMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.mouseMoved, .leftMouseDragged, .leftMouseDown, .scrollWheel]
+        ) { [weak self] event in
+            MainActor.assumeIsolated { self?.handle(event) }
         }
 
         apply(animated: false)
@@ -90,6 +109,17 @@ final class MenuBarController: NSObject {
     }
 
     // MARK: State
+
+    private func setCollapsed(_ collapsed: Bool) {
+        guard collapsed != isCollapsed else { return }
+        isCollapsed = collapsed
+        revealedByHover = false
+        // A deliberate toggle shouldn't be undone by hover until the pointer leaves the bar.
+        hoverArmed = false
+        collapseTimer?.invalidate()
+        if !collapsed { scheduleAutoCollapse() }
+        apply()
+    }
 
     private func apply(animated: Bool = true) {
         let revealed = isPeeking || !isCollapsed
@@ -126,10 +156,43 @@ final class MenuBarController: NSObject {
         return defaults.double(forKey: Self.positionKey("divider")) > defaults.double(forKey: Self.positionKey("toggle"))
     }
 
-    // MARK: Peek
+    // MARK: Events
 
-    private func pointerMoved() {
-        guard poll == nil, isPeeking || Self.pointerInMenuBar() else { return }
+    private func handle(_ event: NSEvent) {
+        switch event.type {
+        case .leftMouseDown:
+            if Preferences.isOn(Preferences.showOnClick),
+               MenuBar.isEmptySpace(NSEvent.mouseLocation, ignoring: Self.itemNames) {
+                setCollapsed(!isCollapsed)
+            }
+        case .scrollWheel:
+            scrolled(event)
+        default:
+            startPolling()
+        }
+    }
+
+    /// Pulling down on the menu bar reveals; pushing up hides.
+    private func scrolled(_ event: NSEvent) {
+        guard Preferences.isOn(Preferences.showOnScroll), MenuBar.contains(NSEvent.mouseLocation) else { return }
+        if event.phase == .began || event.timestamp - lastScroll > Metric.scrollGestureGap {
+            scrollTotal = 0
+            scrollHandled = false
+        }
+        lastScroll = event.timestamp
+        guard !scrollHandled else { return }
+
+        // In finger terms, so natural and classic scrolling feel the same; a wheel
+        // reports lines rather than points.
+        let delta = event.isDirectionInvertedFromDevice ? event.scrollingDeltaY : -event.scrollingDeltaY
+        scrollTotal += event.hasPreciseScrollingDeltas ? delta : delta * 10
+        guard abs(scrollTotal) >= Metric.scrollThreshold else { return }
+        scrollHandled = true
+        setCollapsed(scrollTotal < 0)
+    }
+
+    private func startPolling() {
+        guard poll == nil, isPeeking || revealedByHover || MenuBar.contains(NSEvent.mouseLocation) else { return }
         let timer = Timer(timeInterval: Metric.pollInterval, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
         }
@@ -138,11 +201,25 @@ final class MenuBarController: NSObject {
     }
 
     private func tick() {
+        let pointer = NSEvent.mouseLocation
         let modifiers = NSEvent.modifierFlags.intersection([.command, .option, .control, .shift])
         let commandOnly = modifiers == .command
         let mouseDown = NSEvent.pressedMouseButtons != 0
-        let inMenuBar = Self.pointerInMenuBar()
+        let inMenuBar = MenuBar.contains(pointer)
 
+        updatePeek(commandOnly: commandOnly, inMenuBar: inMenuBar, mouseDown: mouseDown)
+        if !isPeeking {
+            updateHover(pointer: pointer, inMenuBar: inMenuBar, idle: modifiers.isEmpty && !mouseDown)
+        }
+
+        if !isPeeking && !revealedByHover && !inMenuBar {
+            poll?.invalidate()
+            poll = nil
+            hoverArmed = true
+        }
+    }
+
+    private func updatePeek(commandOnly: Bool, inMenuBar: Bool, mouseDown: Bool) {
         if isPeeking {
             // Changing the divider mid-drag would yank the item out from under the cursor.
             if !commandOnly && !mouseDown {
@@ -161,21 +238,35 @@ final class MenuBarController: NSObject {
         } else {
             commandHeldSince = nil
         }
-
-        if !isPeeking && !inMenuBar {
-            poll?.invalidate()
-            poll = nil
-        }
     }
 
-    private static func pointerInMenuBar() -> Bool {
-        let p = NSEvent.mouseLocation
-        guard let screen = NSScreen.screens.first(where: {
-            ($0.frame.minX...$0.frame.maxX).contains(p.x) && ($0.frame.minY...$0.frame.maxY).contains(p.y)
-        }) else { return false }
-        // visibleFrame excludes the menu bar, which is taller on notched displays.
-        let height = max(NSStatusBar.system.thickness, screen.frame.maxY - screen.visibleFrame.maxY)
-        return p.y >= screen.frame.maxY - height
+    private func updateHover(pointer: NSPoint, inMenuBar: Bool, idle: Bool) {
+        let overEmptySpace = inMenuBar && MenuBar.isEmptySpace(pointer, ignoring: Self.itemNames)
+        if !overEmptySpace { hoverSince = nil }
+
+        if isCollapsed && overEmptySpace && hoverArmed && idle && Preferences.isOn(Preferences.showOnHover) {
+            let since = hoverSince ?? Date()
+            hoverSince = since
+            if Date().timeIntervalSince(since) >= Metric.hoverDelay {
+                isCollapsed = false
+                revealedByHover = true
+                hoverSince = nil
+                apply()
+            }
+        }
+
+        guard revealedByHover else { return }
+        // Stay open while the pointer is in the bar or in a menu opened from it.
+        if inMenuBar || !idle || MenuBar.isMenuOpen {
+            hoverExitSince = nil
+            return
+        }
+        let since = hoverExitSince ?? Date()
+        hoverExitSince = since
+        if Date().timeIntervalSince(since) >= Metric.hoverExitDelay {
+            hoverExitSince = nil
+            setCollapsed(true)
+        }
     }
 
     private static let dividerImage: NSImage = {
@@ -196,23 +287,20 @@ final class MenuBarController: NSObject {
             showMenu()
             return
         }
-        isCollapsed.toggle()
-        collapseTimer?.invalidate()
-        if !isCollapsed { scheduleAutoCollapse() }
-        apply()
+        setCollapsed(!isCollapsed)
     }
 
     private func scheduleAutoCollapse() {
         collapseTimer = Timer.scheduledTimer(withTimeInterval: Metric.autoCollapse, repeats: false) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self, !self.isCollapsed else { return }
-                // Wait while the user is still working in the menu bar.
-                if self.isPeeking || Self.pointerInMenuBar() || NSEvent.pressedMouseButtons != 0 {
+                // Wait while the user is still working in the menu bar or one of its menus.
+                if self.isPeeking || MenuBar.contains(NSEvent.mouseLocation) || MenuBar.isMenuOpen
+                    || NSEvent.pressedMouseButtons != 0 {
                     self.scheduleAutoCollapse()
                     return
                 }
-                self.isCollapsed = true
-                self.apply()
+                self.setCollapsed(true)
             }
         }
     }
