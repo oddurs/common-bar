@@ -1,6 +1,5 @@
 import AppKit
 import BarKit
-import ServiceManagement
 import SwiftUI
 import Symbols
 
@@ -13,7 +12,6 @@ final class MenuBarController: NSObject {
     private enum Metric {
         static let toggleLength: CGFloat = 24
         static let pollInterval: TimeInterval = 1.0 / 30
-        static let autoCollapse: TimeInterval = 8
         static let fadeDuration: TimeInterval = 0.12
     }
 
@@ -32,6 +30,7 @@ final class MenuBarController: NSObject {
     private var collapseTimer: Timer?
     private var eventMonitor: Any?
     private var tipsPopover: NSPopover?
+    private let settings = SettingsWindow()
 
     override init() {
         Preferences.register()
@@ -261,7 +260,8 @@ final class MenuBarController: NSObject {
     }
 
     private func scheduleAutoCollapse() {
-        collapseTimer = Timer.scheduledTimer(withTimeInterval: Metric.autoCollapse, repeats: false) { [weak self] _ in
+        guard let delay = Preferences.autoHideDelay.interval else { return }
+        collapseTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self, !self.reveal.isCollapsed else { return }
                 // Wait while the user is still working in the menu bar or one of its menus.
@@ -284,12 +284,10 @@ final class MenuBarController: NSObject {
         let tips = NSMenuItem(title: "How to Arrange…", action: #selector(showTips), keyEquivalent: "")
         tips.target = self
         menu.addItem(tips)
-        menu.addItem(.separator())
 
-        let login = NSMenuItem(title: "Open at Login", action: #selector(toggleOpenAtLogin), keyEquivalent: "")
-        login.target = self
-        login.state = SMAppService.mainApp.status == .enabled ? .on : .off
-        menu.addItem(login)
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(showSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
         menu.addItem(.separator())
 
         menu.addItem(
@@ -321,17 +319,16 @@ final class MenuBarController: NSObject {
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
     }
 
-    @objc private func toggleOpenAtLogin() {
-        do {
-            if SMAppService.mainApp.status == .enabled {
-                try SMAppService.mainApp.unregister()
-            } else {
-                try SMAppService.mainApp.register()
-            }
-        } catch {
-            NSApp.activate()
-            NSAlert(error: error).runModal()
-        }
+    @objc func showSettings() {
+        settings.show()
+    }
+}
+
+extension MenuBarController: NSApplicationDelegate {
+    /// Opening the app again while it runs is how people look for its settings.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        showSettings()
+        return false
     }
 }
 
