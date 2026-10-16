@@ -9,9 +9,14 @@ struct TipsView: View {
                 .font(.headline)
 
             VStack(alignment: .leading, spacing: 10) {
-                tip("command", "Hold ⌘ and drag icons to the left of the line to hide them.")
-                tip("chevron.compact.left", "Click the chevron to show hidden icons.")
-                tip("cursorarrow.motionlines", "Hold ⌘ over the menu bar anytime to rearrange.")
+                tip(
+                    "command",
+                    "Hold ⌘ over the menu bar and drag icons left of the line to hide them, or past the dotted line to keep them always hidden."
+                )
+                tip(
+                    "cursorarrow.motionlines", "Hover, scroll down, or click empty menu bar space to show hidden icons."
+                )
+                tip("option", "Option-click the chevron to show always-hidden icons too.")
             }
 
             HStack {
