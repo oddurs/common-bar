@@ -30,7 +30,7 @@ Requires macOS 14 or later.
 
 ## Usage
 
-On first launch the hidden items are shown along with a short set of tips. **How to Arrange…** in the right-click menu brings them back.
+On first launch a short how-to plays in the menu bar beside the chevron: a ⌘ key is held, and an icon is dragged past the chevron and hides. It plays three times and stops early if you click or hold ⌘. **How to Arrange…** in the right-click menu plays it again.
 
 - **Choose what hides:** hold ⌘ over the menu bar and drag icons past the chevron to hide them, or right of the chevron to keep them visible. With the always-hidden section on, drag them past the dotted line to keep them always hidden.
 - **Show hidden items:** click the chevron, click empty menu bar space, rest the pointer on empty menu bar space, or swipe down on the menu bar.

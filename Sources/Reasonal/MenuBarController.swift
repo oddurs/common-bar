@@ -1,6 +1,5 @@
 import AppKit
 import BarKit
-import SwiftUI
 
 /// Three status items, right to left: a chevron that toggles, an invisible divider
 /// kept directly left of it, and a dotted always-hidden divider. Collapsing stretches a
@@ -31,7 +30,7 @@ final class MenuBarController: NSObject {
     private var eventMonitor: Any?
     private var preferencesObserver: Any?
     private var alwaysHidden = Preferences.isOn(Preferences.alwaysHiddenSection)
-    private var tipsPopover: NSPopover?
+    private let demo = DragDemoOverlay()
     private let settings = SettingsWindow()
 
     override init() {
@@ -75,12 +74,12 @@ final class MenuBarController: NSObject {
 
         apply(animated: false)
 
-        // Give the status bar a moment to lay the items out: the tips anchor to the
+        // Give the status bar a moment to lay the items out: the how-to plays beside the
         // chevron, and pinning the divider needs the chevron's width.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             MainActor.assumeIsolated {
                 guard let self else { return }
-                if self.reveal.isCollapsed { self.apply(animated: false) } else { self.showTips() }
+                if self.reveal.isCollapsed { self.apply(animated: false) } else { self.showDemo() }
             }
         }
     }
@@ -189,6 +188,7 @@ final class MenuBarController: NSObject {
     private func handle(_ event: NSEvent) {
         switch event.type {
         case .leftMouseDown:
+            demo.close()
             if Preferences.isOn(Preferences.showOnClick),
                 MenuBar.isEmptySpace(NSEvent.mouseLocation, ignoring: ItemName.all)
             {
@@ -227,6 +227,8 @@ final class MenuBarController: NSObject {
         let now = Date()
 
         if peek.update(commandOnly: commandOnly, inMenuBar: inMenuBar, mouseDown: mouseDown, now: now) {
+            // Holding ⌘ is the how-to's first step; the user has it from here.
+            if peek.isPeeking { demo.close() }
             apply()
         }
         if !peek.isPeeking {
@@ -257,6 +259,7 @@ final class MenuBarController: NSObject {
     // MARK: Toggle
 
     @objc private func toggleClicked() {
+        demo.close()
         let event = NSApp.currentEvent
         let modifiers = event?.modifierFlags ?? []
         if event?.type == .rightMouseDown || modifiers.contains(.control) {
@@ -290,7 +293,7 @@ final class MenuBarController: NSObject {
     private func showMenu() {
         let menu = NSMenu()
 
-        let tips = NSMenuItem(title: "How to Arrange…", action: #selector(showTips), keyEquivalent: "")
+        let tips = NSMenuItem(title: "How to Arrange…", action: #selector(showDemo), keyEquivalent: "")
         tips.target = self
         menu.addItem(tips)
 
@@ -307,25 +310,32 @@ final class MenuBarController: NSObject {
         toggle.menu = nil
     }
 
-    // MARK: Tips
+    // MARK: How-to
 
-    /// Shown with the hidden items revealed, so the divider the text describes is on screen.
-    @objc private func showTips() {
-        guard let button = toggle.button, tipsPopover == nil else { return }
+    /// Played with the hidden items revealed, beside the chevron the user will drag past.
+    @objc private func showDemo() {
+        playDemo(attemptsLeft: 8)
+    }
+
+    /// Just after launch the window server may not have laid the items out yet, so the
+    /// chevron is looked for again for a moment before giving up.
+    private func playDemo(attemptsLeft: Int) {
+        guard !demo.isShowing, let button = toggle.button, let screen = NSScreen.main ?? NSScreen.screens.first
+        else { return }
+        guard let chevron = MenuBar.chevronFrame(on: screen, chevronLength: Metric.toggleLength) else {
+            guard attemptsLeft > 0 else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+                MainActor.assumeIsolated { self?.playDemo(attemptsLeft: attemptsLeft - 1) }
+            }
+            return
+        }
         collapseTimer?.invalidate()
         reveal.expand()
         apply()
-
-        let popover = NSPopover()
-        popover.behavior = .transient
-        popover.delegate = self
-        popover.contentViewController = NSHostingController(
-            rootView: TipsView { [weak popover] in
-                popover?.performClose(nil)
-            })
-        tipsPopover = popover
-        NSApp.activate()
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        demo.show(beside: chevron, appearance: button.effectiveAppearance) { [weak self] in
+            UserDefaults.standard.set(true, forKey: Self.onboardedKey)
+            self?.scheduleAutoCollapse()
+        }
     }
 
     @objc func showSettings() {
@@ -338,13 +348,5 @@ extension MenuBarController: NSApplicationDelegate {
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         showSettings()
         return false
-    }
-}
-
-extension MenuBarController: NSPopoverDelegate {
-    func popoverDidClose(_ notification: Notification) {
-        tipsPopover = nil
-        UserDefaults.standard.set(true, forKey: Self.onboardedKey)
-        scheduleAutoCollapse()
     }
 }
