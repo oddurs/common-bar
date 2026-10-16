@@ -26,7 +26,7 @@ Requires macOS 14 or later.
    xattr -dr com.apple.quarantine "/Applications/Common Bar.app"
    ```
 
-3. Right-click the chevron, choose **Settings…**, and turn on **Open at Login**.
+3. Right-click the chevron, choose **Settings…**, and turn on **Open at login**.
 
 ## Usage
 
@@ -41,9 +41,9 @@ On first launch the hidden items are shown along with a short set of tips. **How
 
 **Settings** opens from that menu (⌘,) or by opening Common Bar again while it runs:
 
-- **Open at Login**.
-- **Hide Again After:** 5 seconds, 10 seconds (the default), 30 seconds, 1 minute, or Never.
 - **Show Hidden Icons When:** hovering over empty menu bar space, scrolling down on the menu bar, or clicking empty menu bar space. Each can be turned off.
+- **General:** **Open at login**, and **Hide again after** 5 seconds, 10 seconds (the default), 30 seconds, 1 minute, or never.
+- **Common Tools:** Common Stats, Common Keys, and Common Bar, with a button to open or get each one, and the installed version of Common Bar.
 
 More in the [documentation](https://oddurs.github.io/common-tools/bar/docs/).
 

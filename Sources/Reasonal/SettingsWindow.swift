@@ -6,7 +6,7 @@ final class SettingsWindow {
     private var window: NSWindow?
 
     func show() {
-        // A fresh view each time, so Open at Login reflects a change made elsewhere.
+        // A fresh view each time, so Open at login reflects a change made elsewhere.
         let content = NSHostingController(rootView: SettingsView())
         content.sizingOptions = .preferredContentSize
 
