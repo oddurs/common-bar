@@ -3,10 +3,10 @@ import ServiceManagement
 import SwiftUI
 import Symbols
 
-/// Two status items: a chevron that toggles, and a divider to its left.
-/// Collapsing stretches the divider so everything left of it is pushed off-screen.
-/// Holding ⌘ over the menu bar reveals the divider and the hidden items, so they
-/// can be rearranged with the system's own ⌘-drag.
+/// Three status items, right to left: a chevron that toggles, a divider, and an
+/// always-hidden divider. Collapsing stretches a divider so everything left of it is
+/// pushed off-screen. A normal reveal shrinks only the first divider; ⌥-click or
+/// holding ⌘ shrinks both, and ⌘ also lets the system's own ⌘-drag rearrange them.
 @MainActor
 final class MenuBarController: NSObject {
     private enum Metric {
@@ -24,14 +24,16 @@ final class MenuBarController: NSObject {
     }
 
     private static let onboardedKey = "onboarded"
-    private static let itemNames: Set<String> = ["toggle", "divider"]
+    private static let itemNames: Set<String> = ["toggle", "divider", "alwaysDivider"]
 
     private let toggle: NSStatusItem
     private let divider: NSStatusItem
+    private let alwaysDivider: NSStatusItem
     private let chevron = PassthroughImageView()
     private var chevronSymbol: String?
     private var isCollapsed = true
     private var isPeeking = false
+    private var showsAlwaysHidden = false
     private var commandHeldSince: Date?
     private var poll: Timer?
     private var collapseTimer: Timer?
@@ -52,17 +54,21 @@ final class MenuBarController: NSObject {
     override init() {
         Preferences.register()
         // Without a saved position a new item lands at the far left, which on a crowded
-        // notched display is behind the notch. Start both beside the system items.
+        // notched display is behind the notch. Start them beside the system items, each
+        // just left of the one before, wherever the user has since moved that one.
         Self.seedPosition(0, for: "toggle")
-        Self.seedPosition(1, for: "divider")
+        Self.seedPosition(Self.position(of: "toggle") + 1, for: "divider")
+        Self.seedPosition(Self.position(of: "divider") + 1, for: "alwaysDivider")
         isCollapsed = UserDefaults.standard.bool(forKey: Self.onboardedKey)
 
         toggle = NSStatusBar.system.statusItem(withLength: Metric.toggleLength)
         divider = NSStatusBar.system.statusItem(withLength: 0)
+        alwaysDivider = NSStatusBar.system.statusItem(withLength: 0)
         super.init()
 
         toggle.autosaveName = "toggle"
         divider.autosaveName = "divider"
+        alwaysDivider.autosaveName = "alwaysDivider"
 
         if let button = toggle.button {
             button.target = self
@@ -79,6 +85,9 @@ final class MenuBarController: NSObject {
         divider.button?.image = Self.dividerImage
         divider.button?.appearsDisabled = true
         divider.button?.setAccessibilityLabel("Hidden items divider")
+        alwaysDivider.button?.image = Self.alwaysDividerImage
+        alwaysDivider.button?.appearsDisabled = true
+        alwaysDivider.button?.setAccessibilityLabel("Always-hidden items divider")
 
         // Mouse and scroll events need no permission. Modifiers and hover are polled,
         // only while the pointer is in the menu bar.
@@ -102,6 +111,11 @@ final class MenuBarController: NSObject {
         "NSStatusItem Preferred Position \(name)"
     }
 
+    /// Distance from the right edge of the screen; larger is further left.
+    private static func position(of name: String) -> Double {
+        UserDefaults.standard.double(forKey: positionKey(name))
+    }
+
     private static func seedPosition(_ position: Double, for name: String) {
         if UserDefaults.standard.object(forKey: positionKey(name)) == nil {
             UserDefaults.standard.set(position, forKey: positionKey(name))
@@ -110,9 +124,10 @@ final class MenuBarController: NSObject {
 
     // MARK: State
 
-    private func setCollapsed(_ collapsed: Bool) {
-        guard collapsed != isCollapsed else { return }
+    private func setCollapsed(_ collapsed: Bool, showingAlwaysHidden: Bool = false) {
+        guard collapsed != isCollapsed || showingAlwaysHidden != showsAlwaysHidden else { return }
         isCollapsed = collapsed
+        showsAlwaysHidden = !collapsed && showingAlwaysHidden
         revealedByHover = false
         // A deliberate toggle shouldn't be undone by hover until the pointer leaves the bar.
         hoverArmed = false
@@ -123,17 +138,20 @@ final class MenuBarController: NSObject {
 
     private func apply(animated: Bool = true) {
         let revealed = isPeeking || !isCollapsed
+        let revealsAll = isPeeking || (revealed && showsAlwaysHidden)
         let motion = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
 
-        if revealed {
-            divider.length = Metric.dividerLength
-        } else {
-            divider.length = dividerIsLeftOfToggle ? Metric.hiddenLength : 0
-        }
+        divider.length = revealed ? Metric.dividerLength : length(hiding: isOrdered("divider", leftOf: "toggle"))
+        // Parked while collapsed too, so a reveal never flashes the always-hidden items.
+        alwaysDivider.length =
+            revealsAll
+            ? Metric.dividerLength
+            : length(hiding: isOrdered("alwaysDivider", leftOf: "divider"))
 
         NSAnimationContext.runAnimationGroup { context in
             context.duration = motion ? Metric.fadeDuration : 0
             divider.button?.animator().alphaValue = revealed ? 1 : 0
+            alwaysDivider.button?.animator().alphaValue = revealsAll ? 1 : 0
         }
 
         let symbol = isCollapsed ? "chevron.compact.left" : "chevron.compact.right"
@@ -149,13 +167,16 @@ final class MenuBarController: NSObject {
         toggle.button?.setAccessibilityLabel(isCollapsed ? "Show hidden menu bar items" : "Hide menu bar items")
     }
 
-    /// If the divider was dragged to the right of the toggle, collapsing would push
-    /// the toggle off-screen with everything else. macOS records each item's distance
-    /// from the right edge as it moves, which is known before the items are laid out.
-    private var dividerIsLeftOfToggle: Bool {
-        let defaults = UserDefaults.standard
-        return defaults.double(forKey: Self.positionKey("divider"))
-            > defaults.double(forKey: Self.positionKey("toggle"))
+    /// A divider dragged out of order would push the items meant to stay visible
+    /// off-screen with the rest, including the toggle, so it is left unstretched.
+    private func length(hiding inOrder: Bool) -> CGFloat {
+        inOrder ? Metric.hiddenLength : 0
+    }
+
+    /// macOS records each item's distance from the right edge as it moves, which is
+    /// known before the items are laid out.
+    private func isOrdered(_ name: String, leftOf other: String) -> Bool {
+        Self.position(of: name) > Self.position(of: other)
     }
 
     // MARK: Events
@@ -282,15 +303,35 @@ final class MenuBarController: NSObject {
         return image
     }()
 
+    /// Dotted, so the two dividers read differently while arranging.
+    private static let alwaysDividerImage: NSImage = {
+        let image = NSImage(size: NSSize(width: 2, height: 14), flipped: false) { rect in
+            NSColor.black.setFill()
+            for y in stride(from: rect.minY, to: rect.maxY, by: 4) {
+                NSBezierPath(ovalIn: NSRect(x: rect.minX, y: y, width: 2, height: 2)).fill()
+            }
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }()
+
     // MARK: Toggle
 
     @objc private func toggleClicked() {
         let event = NSApp.currentEvent
-        if event?.type == .rightMouseDown || event?.modifierFlags.contains(.control) == true {
+        let modifiers = event?.modifierFlags ?? []
+        if event?.type == .rightMouseDown || modifiers.contains(.control) {
             showMenu()
             return
         }
-        setCollapsed(!isCollapsed)
+        if modifiers.contains(.option) {
+            // Opens everything, or closes it if everything is already showing.
+            let allShowing = !isCollapsed && showsAlwaysHidden
+            setCollapsed(allShowing, showingAlwaysHidden: !allShowing)
+        } else {
+            setCollapsed(!isCollapsed)
+        }
     }
 
     private func scheduleAutoCollapse() {
