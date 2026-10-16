@@ -9,7 +9,7 @@ Do all automation through `scripts/task`. CI and the git hooks call nothing else
 ```sh
 scripts/task fmt       # format in place
 scripts/task lint      # swift-format lint --strict, then a build with warnings as errors
-scripts/task test      # unit tests
+scripts/task test      # BarKit and bundle tests
 scripts/task build     # universal "build/Common Bar.app"
 scripts/task check     # lint + test + build
 ```
@@ -30,7 +30,9 @@ Conventional Commits: `type(scope): subject`. Write the subject in the imperativ
 
 - The app was called Reasonal. Keep the bundle id `com.oddurs.reasonal`, the `Reasonal` executable target, the status item autosave names, and the UserDefaults keys: existing installs keep their item positions, preferences, and login item only while these stay put. `BundleTests` guards the bundle identifiers.
 - Only the visible name is Common Bar: `CFBundleName`, `CFBundleDisplayName`, and menu text.
-- `Sources/Reasonal/MenuBarController.swift` owns the status items and the reveal logic. `MenuBar.swift` answers where things are in the menu bar. Nothing needs a permission prompt; keep it that way, and don't add private APIs.
+- `Sources/BarKit` holds every decision that can be made from plain values: divider lengths from saved positions (`DividerLayout`), the seed chain and autosave names (`ItemPositions`, `ItemName`), what a click does (`Reveal`), and the ⌘-peek, hover, and scroll state machines (`Peek`, `Hover`, `ScrollGesture`). It imports no AppKit and takes the time as a parameter, so it is tested without a menu bar.
+- `Sources/Reasonal` is the thin app shell. `MenuBarController.swift` owns the status items, reads events and defaults, and feeds BarKit. `MenuBar.swift` answers where things are in the menu bar. Nothing needs a permission prompt; keep it that way, and don't add private APIs.
 - Status item positions are read from the `NSStatusItem Preferred Position <name>` defaults macOS writes, because item windows aren't laid out at launch.
+- A behaviour change goes into BarKit with a test first; the shell should only translate between AppKit and BarKit.
 - A bug fix comes with the test that would have caught it.
 - The app icon comes from `swift scripts/make-icon.swift`, which writes `Resources/AppIcon.icns` and `docs/icon.png`. Edit the script, not the images.
