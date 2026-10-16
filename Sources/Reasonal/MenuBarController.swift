@@ -1,7 +1,6 @@
 import AppKit
 import BarKit
 import SwiftUI
-import Symbols
 
 /// Three status items, right to left: a chevron that toggles, an invisible divider
 /// kept directly left of it, and a dotted always-hidden divider. Collapsing stretches a
@@ -11,7 +10,8 @@ import Symbols
 @MainActor
 final class MenuBarController: NSObject {
     private enum Metric {
-        static let toggleLength: CGFloat = 24
+        /// Just wide enough for the chevron; macOS adds its own padding either side.
+        static let toggleLength: CGFloat = 10
         static let pollInterval: TimeInterval = 1.0 / 30
         static let fadeDuration: TimeInterval = 0.12
     }
@@ -21,8 +21,7 @@ final class MenuBarController: NSObject {
     private let toggle: NSStatusItem
     private var divider: NSStatusItem
     private let alwaysDivider: NSStatusItem
-    private let chevron = PassthroughImageView()
-    private var chevronSymbol: String?
+    private var chevronPointsLeft: Bool?
     private var reveal: Reveal
     private var peek = Peek()
     private var hover = Hover()
@@ -53,14 +52,9 @@ final class MenuBarController: NSObject {
             button.action = #selector(toggleClicked)
             // Menu bar extras respond on press, not release.
             button.sendAction(on: [.leftMouseDown, .rightMouseDown])
-            // An image view rather than the button's own image, so the chevron can use
-            // the system symbol transitions.
-            chevron.frame = button.bounds
-            chevron.autoresizingMask = [.width, .height]
-            chevron.symbolConfiguration = .init(pointSize: 13, weight: .semibold)
-            button.addSubview(chevron)
+            button.imagePosition = .imageOnly
         }
-        alwaysDivider.button?.image = Self.alwaysDividerImage
+        alwaysDivider.button?.image = Glyphs.dottedLine
         alwaysDivider.button?.appearsDisabled = true
         alwaysDivider.button?.setAccessibilityLabel("Always-hidden items divider")
 
@@ -146,16 +140,10 @@ final class MenuBarController: NSObject {
             alwaysDivider.button?.animator().alphaValue = layout.showsAlwaysDivider ? 1 : 0
         }
 
-        let symbol = reveal.isCollapsed ? "chevron.compact.left" : "chevron.compact.right"
-        guard symbol != chevronSymbol,
-            let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
-        else { return }
-        if motion && chevronSymbol != nil {
-            chevron.setSymbolImage(image, contentTransition: .replace.downUp)
-        } else {
-            chevron.image = image
-        }
-        chevronSymbol = symbol
+        // Swapped outright, as other menu bar icons do; the divider fade carries the motion.
+        guard reveal.isCollapsed != chevronPointsLeft else { return }
+        chevronPointsLeft = reveal.isCollapsed
+        toggle.button?.image = reveal.isCollapsed ? Glyphs.chevronLeft : Glyphs.chevronRight
         toggle.button?.setAccessibilityLabel(reveal.isCollapsed ? "Show hidden menu bar items" : "Hide menu bar items")
     }
 
@@ -266,19 +254,6 @@ final class MenuBarController: NSObject {
         }
     }
 
-    /// Dotted, so it reads as a boundary rather than an icon while arranging.
-    private static let alwaysDividerImage: NSImage = {
-        let image = NSImage(size: NSSize(width: 2, height: 14), flipped: false) { rect in
-            NSColor.black.setFill()
-            for y in stride(from: rect.minY, to: rect.maxY, by: 4) {
-                NSBezierPath(ovalIn: NSRect(x: rect.minX, y: y, width: 2, height: 2)).fill()
-            }
-            return true
-        }
-        image.isTemplate = true
-        return image
-    }()
-
     // MARK: Toggle
 
     @objc private func toggleClicked() {
@@ -372,9 +347,4 @@ extension MenuBarController: NSPopoverDelegate {
         UserDefaults.standard.set(true, forKey: Self.onboardedKey)
         scheduleAutoCollapse()
     }
-}
-
-/// Lets clicks fall through to the status bar button underneath.
-private final class PassthroughImageView: NSImageView {
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }

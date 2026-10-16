@@ -51,7 +51,8 @@ public struct ItemPositions: Equatable, Sendable {
 /// divider stays at zero width, so the icons behind it hide and show with the rest.
 public struct DividerLayout: Equatable, Sendable {
     public static let hiddenLength: CGFloat = 10_000
-    public static let visibleLength: CGFloat = 12
+    /// The dotted line's item width; macOS adds its own padding either side.
+    public static let visibleLength: CGFloat = 4
 
     public var dividerLength: CGFloat
     public var alwaysDividerLength: CGFloat

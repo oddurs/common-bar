@@ -1,0 +1,58 @@
+import AppKit
+
+/// The app's menu bar marks, drawn rather than taken from SF Symbols so they stay small,
+/// thin, and sharp. Template images, so macOS tints them like every other menu bar icon.
+/// All sizes are in points.
+enum Glyphs {
+    enum Chevron {
+        static let canvas = NSSize(width: 6, height: 9)
+        /// Horizontal and vertical reach of each arm from the tip: equal, so the tip is a right angle.
+        static let arm: CGFloat = 3.5
+        /// Gap between the tip and the canvas edge, leaving room for the mitred point.
+        static let tipInset: CGFloat = 1
+        static let stroke: CGFloat = 1.25
+    }
+
+    enum DottedLine {
+        static let canvas = NSSize(width: 1.5, height: 12)
+        static let dot: CGFloat = 1.5
+        /// Distance between the bottoms of neighbouring dots.
+        static let pitch: CGFloat = 3
+    }
+
+    static let chevronLeft = chevron(pointingLeft: true)
+    static let chevronRight = chevron(pointingLeft: false)
+
+    /// A right-angled chevron with a mitred tip and square ends, centred vertically.
+    private static func chevron(pointingLeft: Bool) -> NSImage {
+        let image = NSImage(size: Chevron.canvas, flipped: false) { rect in
+            let tipX = pointingLeft ? rect.minX + Chevron.tipInset : rect.maxX - Chevron.tipInset
+            let endX = pointingLeft ? tipX + Chevron.arm : tipX - Chevron.arm
+            let path = NSBezierPath()
+            path.move(to: NSPoint(x: endX, y: rect.midY + Chevron.arm))
+            path.line(to: NSPoint(x: tipX, y: rect.midY))
+            path.line(to: NSPoint(x: endX, y: rect.midY - Chevron.arm))
+            path.lineWidth = Chevron.stroke
+            path.lineJoinStyle = .miter
+            path.lineCapStyle = .butt
+            NSColor.black.setStroke()
+            path.stroke()
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }
+
+    /// Fine dots, so the always-hidden boundary reads as a mark rather than an icon.
+    static let dottedLine: NSImage = {
+        let image = NSImage(size: DottedLine.canvas, flipped: false) { rect in
+            NSColor.black.setFill()
+            for y in stride(from: rect.minY, to: rect.maxY, by: DottedLine.pitch) {
+                NSBezierPath(ovalIn: NSRect(x: rect.minX, y: y, width: DottedLine.dot, height: DottedLine.dot)).fill()
+            }
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }()
+}
