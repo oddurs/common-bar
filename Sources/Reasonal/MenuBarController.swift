@@ -3,10 +3,11 @@ import BarKit
 import SwiftUI
 import Symbols
 
-/// Three status items, right to left: a chevron that toggles, a divider, and an
-/// always-hidden divider. Collapsing stretches a divider so everything left of it is
-/// pushed off-screen. A normal reveal shrinks only the first divider; ⌥-click or
-/// holding ⌘ shrinks both, and ⌘ also lets the system's own ⌘-drag rearrange them.
+/// Three status items, right to left: a chevron that toggles, an invisible divider
+/// kept directly left of it, and a dotted always-hidden divider. Collapsing stretches a
+/// divider so everything left of it is pushed off-screen, so whatever is dragged past
+/// the chevron hides. A normal reveal shrinks only the first divider; ⌥-click or holding
+/// ⌘ shrinks both, and ⌘ also lets the system's own ⌘-drag rearrange them.
 @MainActor
 final class MenuBarController: NSObject {
     private enum Metric {
@@ -18,7 +19,7 @@ final class MenuBarController: NSObject {
     private static let onboardedKey = "onboarded"
 
     private let toggle: NSStatusItem
-    private let divider: NSStatusItem
+    private var divider: NSStatusItem
     private let alwaysDivider: NSStatusItem
     private let chevron = PassthroughImageView()
     private var chevronSymbol: String?
@@ -38,12 +39,11 @@ final class MenuBarController: NSObject {
         reveal = Reveal(isCollapsed: UserDefaults.standard.bool(forKey: Self.onboardedKey))
 
         toggle = NSStatusBar.system.statusItem(withLength: Metric.toggleLength)
-        divider = NSStatusBar.system.statusItem(withLength: 0)
+        divider = Self.makeDivider()
         alwaysDivider = NSStatusBar.system.statusItem(withLength: 0)
         super.init()
 
         toggle.autosaveName = ItemName.toggle
-        divider.autosaveName = ItemName.divider
         alwaysDivider.autosaveName = ItemName.alwaysDivider
 
         if let button = toggle.button {
@@ -58,9 +58,6 @@ final class MenuBarController: NSObject {
             chevron.symbolConfiguration = .init(pointSize: 13, weight: .semibold)
             button.addSubview(chevron)
         }
-        divider.button?.image = Self.dividerImage
-        divider.button?.appearsDisabled = true
-        divider.button?.setAccessibilityLabel("Hidden items divider")
         alwaysDivider.button?.image = Self.alwaysDividerImage
         alwaysDivider.button?.appearsDisabled = true
         alwaysDivider.button?.setAccessibilityLabel("Always-hidden items divider")
@@ -75,10 +72,12 @@ final class MenuBarController: NSObject {
 
         apply(animated: false)
 
-        if !reveal.isCollapsed {
-            // Give the status bar a moment to lay the items out before anchoring to one.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                MainActor.assumeIsolated { self?.showTips() }
+        // Give the status bar a moment to lay the items out: the tips anchor to the
+        // chevron, and pinning the divider needs the chevron's width.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                if self.reveal.isCollapsed { self.apply(animated: false) } else { self.showTips() }
             }
         }
     }
@@ -125,18 +124,13 @@ final class MenuBarController: NSObject {
 
     private func apply(animated: Bool = true) {
         let motion = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        let layout = DividerLayout(
-            reveal: reveal, isPeeking: peek.isPeeking,
-            positions: ItemPositions(
-                toggle: Self.position(of: ItemName.toggle),
-                divider: Self.position(of: ItemName.divider),
-                alwaysDivider: Self.position(of: ItemName.alwaysDivider)))
+        if reveal.isCollapsed && !peek.isPeeking { pinDivider() }
+        let layout = DividerLayout(reveal: reveal, isPeeking: peek.isPeeking, positions: Self.positions)
         divider.length = layout.dividerLength
         alwaysDivider.length = layout.alwaysDividerLength
 
         NSAnimationContext.runAnimationGroup { context in
             context.duration = motion ? Metric.fadeDuration : 0
-            divider.button?.animator().alphaValue = layout.showsDivider ? 1 : 0
             alwaysDivider.button?.animator().alphaValue = layout.showsAlwaysDivider ? 1 : 0
         }
 
@@ -151,6 +145,32 @@ final class MenuBarController: NSObject {
         }
         chevronSymbol = symbol
         toggle.button?.setAccessibilityLabel(reveal.isCollapsed ? "Show hidden menu bar items" : "Hide menu bar items")
+    }
+
+    private static var positions: ItemPositions {
+        ItemPositions(
+            toggle: position(of: ItemName.toggle),
+            divider: position(of: ItemName.divider),
+            alwaysDivider: position(of: ItemName.alwaysDivider))
+    }
+
+    private static func makeDivider() -> NSStatusItem {
+        let item = NSStatusBar.system.statusItem(withLength: 0)
+        item.autosaveName = ItemName.divider
+        item.button?.setAccessibilityElement(false)
+        return item
+    }
+
+    /// Moves the divider back directly left of the chevron when icons were dropped
+    /// between them, so dragging an icon past the chevron is what hides it. A status
+    /// item takes its saved position only when created, so the divider is recreated.
+    private func pinDivider() {
+        guard let width = toggle.button?.window?.frame.width,
+            let target = Self.positions.dividerRepin(toggleWidth: Double(width))
+        else { return }
+        NSStatusBar.system.removeStatusItem(divider)
+        UserDefaults.standard.set(target, forKey: Self.positionKey(ItemName.divider))
+        divider = Self.makeDivider()
     }
 
     // MARK: Events
@@ -223,17 +243,7 @@ final class MenuBarController: NSObject {
         }
     }
 
-    private static let dividerImage: NSImage = {
-        let image = NSImage(size: NSSize(width: 1.5, height: 14), flipped: false) { rect in
-            NSColor.black.setFill()
-            NSBezierPath(roundedRect: rect, xRadius: 0.75, yRadius: 0.75).fill()
-            return true
-        }
-        image.isTemplate = true
-        return image
-    }()
-
-    /// Dotted, so the two dividers read differently while arranging.
+    /// Dotted, so it reads as a boundary rather than an icon while arranging.
     private static let alwaysDividerImage: NSImage = {
         let image = NSImage(size: NSSize(width: 2, height: 14), flipped: false) { rect in
             NSColor.black.setFill()

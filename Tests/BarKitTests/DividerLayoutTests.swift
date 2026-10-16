@@ -19,28 +19,28 @@ import Testing
         let l = layout(collapsed: true)
         #expect(l.dividerLength == hidden)
         #expect(l.alwaysDividerLength == hidden)
-        #expect(!l.showsDivider && !l.showsAlwaysDivider)
+        #expect(!l.showsAlwaysDivider)
     }
 
     @Test func aNormalRevealKeepsTheAlwaysHiddenSectionParked() {
         let l = layout(collapsed: false)
-        #expect(l.dividerLength == visible)
+        #expect(l.dividerLength == 0)
         #expect(l.alwaysDividerLength == hidden)
-        #expect(l.showsDivider && !l.showsAlwaysDivider)
+        #expect(!l.showsAlwaysDivider)
     }
 
     @Test func revealingEverythingShowsBothLines() {
         let l = layout(collapsed: false, all: true)
-        #expect(l.dividerLength == visible)
+        #expect(l.dividerLength == 0)
         #expect(l.alwaysDividerLength == visible)
-        #expect(l.showsDivider && l.showsAlwaysDivider)
+        #expect(l.showsAlwaysDivider)
     }
 
     @Test func peekingShowsBothLinesEvenWhenCollapsed() {
         let l = layout(collapsed: true, peeking: true)
-        #expect(l.dividerLength == visible)
+        #expect(l.dividerLength == 0)
         #expect(l.alwaysDividerLength == visible)
-        #expect(l.showsDivider && l.showsAlwaysDivider)
+        #expect(l.showsAlwaysDivider)
     }
 
     @Test func aDividerRightOfTheToggleNeverPushesTheToggleOff() {
@@ -83,6 +83,33 @@ import Testing
         #expect(
             ItemPositions.seeded(toggle: 40, divider: nil, alwaysDivider: nil)
                 == ItemPositions(toggle: 40, divider: 41, alwaysDivider: 42))
+    }
+
+    // A toggle 40 wide at 431 has its snug neighbour saved at 471, as observed on Tahoe.
+    @Test func aDividerSnugAgainstTheToggleStays() {
+        let snug = ItemPositions(toggle: 431, divider: 471, alwaysDivider: 600)
+        #expect(snug.dividerRepin(toggleWidth: 40) == nil)
+    }
+
+    @Test func aFreshlyPlacedDividerStaysUntilMacOSRewritesItsPosition() {
+        let placed = ItemPositions(toggle: 431, divider: 432, alwaysDivider: 600)
+        #expect(placed.dividerRepin(toggleWidth: 40) == nil)
+    }
+
+    @Test func iconsDroppedBetweenTheDividerAndTheChevronAreMovedBehindIt() {
+        // Wi-Fi, Battery, and LangSmart (121 pt) dragged just past the chevron.
+        let crowded = ItemPositions(toggle: 516, divider: 677, alwaysDivider: 705)
+        #expect(crowded.dividerRepin(toggleWidth: 40) == 517)
+    }
+
+    @Test func evenANarrowIconBetweenThemCounts() {
+        let narrow = ItemPositions(toggle: 0, divider: 60, alwaysDivider: 90)
+        #expect(narrow.dividerRepin(toggleWidth: 40) == 1)
+    }
+
+    @Test func aDividerRightOfTheToggleIsPutBack() {
+        #expect(ItemPositions(toggle: 100, divider: 60, alwaysDivider: 200).dividerRepin(toggleWidth: 40) == 101)
+        #expect(ItemPositions(toggle: 100, divider: 100, alwaysDivider: 200).dividerRepin(toggleWidth: 40) == 101)
     }
 
     @Test func autosaveNamesStayPut() {
