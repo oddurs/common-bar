@@ -1,6 +1,8 @@
 import BarKit
 import SwiftUI
 
+/// Laid out by the Common Tools Settings standard: the app's own sections, then General, then
+/// `CommonToolsSection`, so the three apps' Settings windows read the same.
 struct SettingsView: View {
     @AppStorage(Preferences.showOnHover) private var showOnHover = true
     @AppStorage(Preferences.showOnScroll) private var showOnScroll = true
@@ -11,15 +13,6 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section {
-                Toggle("Open at Login", isOn: $openAtLogin)
-                Picker("Hide Again After", selection: $autoHide) {
-                    ForEach(AutoHide.allCases) { delay in
-                        Text(Self.title(for: delay)).tag(delay)
-                    }
-                }
-            }
-
             Section {
                 Toggle("Hovering over empty menu bar space", isOn: $showOnHover)
                 Toggle("Scrolling down on the menu bar", isOn: $showOnScroll)
@@ -36,42 +29,44 @@ struct SettingsView: View {
             }
 
             Section {
-                LabeledContent("Version", value: Self.version)
+                Toggle("Open at login", isOn: $openAtLogin)
+                Picker("Hide again after", selection: $autoHide) {
+                    ForEach(AutoHide.allCases) { delay in
+                        Text(Self.title(for: delay)).tag(delay)
+                    }
+                }
+            } header: {
+                Text("General")
+            } footer: {
+                if let loginError {
+                    Text(loginError).foregroundStyle(.secondary)
+                }
             }
+
+            CommonToolsSection()
         }
         .formStyle(.grouped)
-        .frame(width: 440)
+        .frame(width: 460)
         .fixedSize(horizontal: false, vertical: true)
         .onChange(of: openAtLogin) { _, enabled in
             guard enabled != LoginItem.isEnabled else { return }
             do {
                 try LoginItem.setEnabled(enabled)
+                loginError = nil
             } catch {
                 loginError = error.localizedDescription
                 openAtLogin = LoginItem.isEnabled
             }
         }
-        .alert(
-            "Couldn’t Change Open at Login",
-            isPresented: Binding(get: { loginError != nil }, set: { if !$0 { loginError = nil } })
-        ) {
-            Button("OK") {}
-        } message: {
-            Text(loginError ?? "")
-        }
     }
 
     private static func title(for delay: AutoHide) -> String {
         switch delay {
-        case .fiveSeconds: "5 Seconds"
-        case .tenSeconds: "10 Seconds"
-        case .thirtySeconds: "30 Seconds"
-        case .oneMinute: "1 Minute"
+        case .fiveSeconds: "5 seconds"
+        case .tenSeconds: "10 seconds"
+        case .thirtySeconds: "30 seconds"
+        case .oneMinute: "1 minute"
         case .never: "Never"
         }
-    }
-
-    private static var version: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Development"
     }
 }

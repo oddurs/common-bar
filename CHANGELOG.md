@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-16
+
+### Added
+
+- A **Common Tools** section at the end of Settings that lists Common Stats, Common Keys, and Common Bar, opens the ones you have, and links to the others. It also shows Common Bar's version.
+
+### Changed
+
+- Settings follows the layout shared by the Common Tools apps: **Show Hidden Icons When** first, then **General** with **Open at login** and **Hide again after**, then **Common Tools**. Labels are in sentence case, as in System Settings.
+- A failure to change **Open at login** shows under the General section instead of in an alert.
+
 ## [0.2.1] - 2026-10-16
 
 ### Changed
@@ -37,7 +48,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - First-launch tips, also available from **How to Arrange…** in the right-click menu, along with **Open at Login** and **Quit**.
 - Universal (Apple silicon and Intel) builds for macOS 14 and later.
 
-[Unreleased]: https://github.com/oddurs/common-bar/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/oddurs/common-bar/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/oddurs/common-bar/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/oddurs/common-bar/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/oddurs/common-bar/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/oddurs/common-bar/releases/tag/v0.1.0

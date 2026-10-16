@@ -40,4 +40,12 @@ import Testing
         let icon = Self.root.appendingPathComponent("Resources/\(name).icns")
         #expect(FileManager.default.fileExists(atPath: icon.path))
     }
+
+    @Test func shipsEveryCommonToolsIcon() {
+        // CommonTools.swift loads these by id; scripts/task copies the folder into the bundle.
+        for id in ["stats", "keys", "bar"] {
+            let icon = Self.root.appendingPathComponent("Resources/CommonTools/\(id).png")
+            #expect(FileManager.default.fileExists(atPath: icon.path), "missing \(id).png")
+        }
+    }
 }

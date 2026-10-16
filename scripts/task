@@ -60,6 +60,8 @@ build)
     lipo -create $bins -output "$app/Contents/MacOS/Reasonal"
     cp Resources/Info.plist "$app/Contents/"
     cp Resources/AppIcon.icns "$app/Contents/Resources/"
+    # The Common Tools section of Settings shows every family member's icon from here.
+    cp -R Resources/CommonTools "$app/Contents/Resources/"
     # Ad-hoc signature: enough for Gatekeeper on the building machine and for SMAppService.
     codesign --force --sign - --options runtime "$app"
     echo "==> built $app"
