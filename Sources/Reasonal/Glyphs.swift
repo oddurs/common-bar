@@ -20,6 +20,13 @@ enum Glyphs {
         static let pitch: CGFloat = 3
     }
 
+    enum Spacer {
+        static let canvas = NSSize(width: 8, height: 14)
+        static let corner: CGFloat = 2
+        static let stroke: CGFloat = 1
+        static let dash: [CGFloat] = [2, 2]
+    }
+
     static let chevronLeft = chevron(pointingLeft: true)
     static let chevronRight = chevron(pointingLeft: false)
 
@@ -50,6 +57,21 @@ enum Glyphs {
             for y in stride(from: rect.minY, to: rect.maxY, by: DottedLine.pitch) {
                 NSBezierPath(ovalIn: NSRect(x: rect.minX, y: y, width: DottedLine.dot, height: DottedLine.dot)).fill()
             }
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }()
+
+    /// A dashed outline, shown only while arranging so a blank spacer can be found and dragged.
+    static let spacer: NSImage = {
+        let image = NSImage(size: Spacer.canvas, flipped: false) { rect in
+            let inset = rect.insetBy(dx: Spacer.stroke / 2, dy: Spacer.stroke / 2)
+            let path = NSBezierPath(roundedRect: inset, xRadius: Spacer.corner, yRadius: Spacer.corner)
+            path.lineWidth = Spacer.stroke
+            path.setLineDash(Spacer.dash, count: Spacer.dash.count, phase: 0)
+            NSColor.black.setStroke()
+            path.stroke()
             return true
         }
         image.isTemplate = true

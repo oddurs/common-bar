@@ -8,7 +8,8 @@ Hide menu bar items behind one chevron. Hold ⌘ to rearrange. **[oddurs.github.
 - **One chevron.** Every item left of it moves off-screen. Click the chevron to bring them back.
 - **An optional always-hidden section.** Turn it on in Settings, and items left of a dotted line stay hidden even when the rest are showing. ⌥-click the chevron to see them.
 - **Arranged where it lives.** You choose what hides by ⌘-dragging icons past the chevron, the same way macOS rearranges the menu bar.
-- **A small Settings window.** Open at login, how long revealed items stay, which gestures reveal them, and the always-hidden section.
+- **Spacers.** Add up to five blank gaps in Settings and drag them between icons to group them.
+- **A small Settings window.** Open at login, how long revealed items stay, which gestures reveal them, the always-hidden section, and spacers.
 - **Several ways to reveal.** Rest the pointer on empty menu bar space, click it, or swipe down on the bar. Swipe up to hide.
 - **Tidies up after itself.** Hidden items go away again after a few seconds, but never while you're still working in the menu bar or one of its menus.
 - **The chevron is the edge.** Drop an icon just past it and it hides. The invisible divider that does the hiding snaps back beside the chevron whenever the bar hides.
@@ -37,6 +38,7 @@ On first launch a short how-to plays in the menu bar beside the chevron: a ⌘ k
 - **Show always-hidden items too:** turn on **Always-hidden section** in Settings, then ⌥-click the chevron. ⌥-click again, or click the chevron, to hide everything. With the section off, ⌥-click acts like a click.
 - **Hide them again:** click the chevron or empty space, or swipe up. Items shown by a click or swipe hide after 10 seconds by default, but not while the pointer is in the menu bar, a menu is open, or a mouse button is held. Items shown by hovering hide half a second after the pointer leaves the menu bar.
 - **Rearrange at any time:** hold ⌘ over the menu bar. Every hidden item, and the dotted line if the section is on, appears until you let go, and stay put mid-drag.
+- **Group icons with spacers:** set **Spacers** in Settings. New spacers appear in the visible part of the bar. They're blank, so hold ⌘ over the menu bar to see their dashed outlines, then drag them into place. Drag one past the chevron and it hides like any icon.
 - **Menu:** right-click (or Control-click) the chevron for **How to Arrange…**, **Settings…**, and **Quit Common Bar**.
 
 **Settings** opens from that menu (⌘,) or by opening Common Bar again while it runs:

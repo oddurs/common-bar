@@ -11,6 +11,8 @@ final class MenuBarController: NSObject {
     private enum Metric {
         /// Just wide enough for the chevron; macOS adds its own padding either side.
         static let toggleLength: CGFloat = 10
+        /// Wider than macOS's bare padding, so `ChevronLocator` never takes a spacer for the divider.
+        static let spacerLength: CGFloat = 8
         static let pollInterval: TimeInterval = 1.0 / 30
         static let fadeDuration: TimeInterval = 0.12
     }
@@ -21,6 +23,8 @@ final class MenuBarController: NSObject {
     private var divider: NSStatusItem
     private let alwaysDivider: NSStatusItem
     private var chevronPointsLeft: Bool?
+    private var spacers: [NSStatusItem] = []
+    private var syncingSpacers = false
     private var reveal: Reveal
     private var peek = Peek()
     private var hover = Hover()
@@ -72,6 +76,7 @@ final class MenuBarController: NSObject {
             MainActor.assumeIsolated { self?.preferencesChanged() }
         }
 
+        syncSpacers()
         apply(animated: false)
 
         // Give the status bar a moment to lay the items out: the how-to plays beside the
@@ -137,6 +142,10 @@ final class MenuBarController: NSObject {
         NSAnimationContext.runAnimationGroup { context in
             context.duration = motion ? Metric.fadeDuration : 0
             alwaysDivider.button?.animator().alphaValue = layout.showsAlwaysDivider ? 1 : 0
+            // Spacers are blank except while arranging, so they can be found and dragged.
+            for spacer in spacers {
+                spacer.button?.animator().alphaValue = peek.isPeeking ? 1 : 0
+            }
         }
 
         // Swapped outright, as other menu bar icons do; the divider fade carries the motion.
@@ -173,6 +182,7 @@ final class MenuBarController: NSObject {
     }
 
     private func preferencesChanged() {
+        syncSpacers()
         let enabled = Preferences.isOn(Preferences.alwaysHiddenSection)
         // Item positions are saved to the same defaults on every move; only this setting matters here.
         guard enabled != alwaysHidden else { return }
@@ -181,6 +191,33 @@ final class MenuBarController: NSObject {
             _ = reveal.set(collapsed: reveal.isCollapsed, showingAlwaysHidden: false)
         }
         apply()
+    }
+
+    /// Adds or removes spacers to match Settings. A removed spacer keeps its saved
+    /// position, so adding it back puts it where it was.
+    private func syncSpacers() {
+        // Seeding a position below writes to the defaults, which calls back here.
+        guard !syncingSpacers else { return }
+        syncingSpacers = true
+        defer { syncingSpacers = false }
+        let count = Preferences.spacerCount
+        while spacers.count > count {
+            NSStatusBar.system.removeStatusItem(spacers.removeLast())
+        }
+        while spacers.count < count {
+            let name = ItemName.spacer(spacers.count)
+            if Self.savedPosition(of: name) == nil {
+                UserDefaults.standard.set(
+                    Spacers.seedPosition(toggle: Self.position(of: ItemName.toggle)), forKey: Self.positionKey(name))
+            }
+            let item = NSStatusBar.system.statusItem(withLength: Metric.spacerLength)
+            item.autosaveName = name
+            item.button?.image = Glyphs.spacer
+            item.button?.appearsDisabled = true
+            item.button?.alphaValue = peek.isPeeking ? 1 : 0
+            item.button?.setAccessibilityElement(false)
+            spacers.append(item)
+        }
     }
 
     // MARK: Events
