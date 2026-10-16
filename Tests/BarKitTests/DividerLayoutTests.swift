@@ -34,6 +34,32 @@ import Testing
         #expect(layout(collapsed: false, alwaysHidden: false).dividerLength == 0)
     }
 
+    @Test func whileRevealedTheDividerIsParkedSoItLeavesNoGapBesideTheChevron() {
+        #expect(layout(collapsed: false).parksDivider)
+        #expect(layout(collapsed: true, peeking: true).parksDivider)
+        #expect(!layout(collapsed: true).parksDivider)
+    }
+
+    @Test func theAlwaysHiddenDividerIsParkedOnlyWhileItsSectionIsOff() {
+        #expect(layout(collapsed: false, alwaysHidden: false).parksAlwaysDivider)
+        #expect(layout(collapsed: true, alwaysHidden: false).parksAlwaysDivider)
+        #expect(!layout(collapsed: false).parksAlwaysDivider)
+        #expect(!layout(collapsed: true).parksAlwaysDivider)
+        // Out of order with the section on, it stays put rather than losing the user's place.
+        #expect(!layout(collapsed: true, ItemPositions(toggle: 2, divider: 3, alwaysDivider: 1)).parksAlwaysDivider)
+    }
+
+    @Test func aNormalRevealKeepsTheAlwaysHiddenSectionParkedWhileTheDividerIsAway() {
+        // Revealed, the divider waits far left; the always-hidden icons must stay hidden.
+        let away = ItemPositions(toggle: 262, divider: ItemPositions.parked, alwaysDivider: 264)
+        #expect(layout(collapsed: false, away).alwaysDividerLength == hidden)
+    }
+
+    @Test func aParkedDividerIsNeverInPlaceSoHidingPinsItBack() {
+        let parked = ItemPositions(toggle: 516, divider: ItemPositions.parked, alwaysDivider: 600)
+        #expect(parked.dividerRepin(toggleWidth: 26) == 517)
+    }
+
     @Test func collapsedPushesBothSectionsOff() {
         let l = layout(collapsed: true)
         #expect(l.dividerLength == hidden)
@@ -68,8 +94,8 @@ import Testing
         #expect(l.alwaysDividerLength == hidden)
     }
 
-    @Test func anAlwaysHiddenDividerRightOfTheDividerStaysUnstretched() {
-        let positions = ItemPositions(toggle: 0, divider: 2, alwaysDivider: 1)
+    @Test func anAlwaysHiddenDividerRightOfTheChevronStaysUnstretched() {
+        let positions = ItemPositions(toggle: 2, divider: 3, alwaysDivider: 1)
         #expect(layout(collapsed: true, positions).alwaysDividerLength == 0)
         #expect(layout(collapsed: false, positions).alwaysDividerLength == 0)
         #expect(layout(collapsed: true, positions).dividerLength == hidden)

@@ -46,6 +46,10 @@ public struct ItemPositions: Equatable, Sendable {
     }
 
     static let tolerance = 2.0
+
+    /// Beyond every other status item. A divider with nothing to do waits here: even at
+    /// zero length macOS pads it, and that blank gap would otherwise sit among the icons.
+    public static let parked: Double = 100_000
 }
 
 /// How wide each divider is and whether the always-hidden line shows. A stretched
@@ -60,10 +64,16 @@ public struct DividerLayout: Equatable, Sendable {
     public var dividerLength: CGFloat
     public var alwaysDividerLength: CGFloat
     public var showsAlwaysDivider: Bool
+    /// While the hidden items show, the divider has nothing to do, so it is parked.
+    public var parksDivider: Bool
+    /// The always-hidden divider is parked while its section is off.
+    public var parksAlwaysDivider: Bool
 
     public init(reveal: Reveal, isPeeking: Bool, positions: ItemPositions, alwaysHidden: Bool) {
         let revealed = isPeeking || !reveal.isCollapsed
         let revealsAll = isPeeking || (revealed && reveal.showsAlwaysHidden)
+        parksDivider = revealed
+        parksAlwaysDivider = !alwaysHidden
         guard alwaysHidden else {
             dividerLength = revealed ? 0 : Self.length(hiding: positions.divider > positions.toggle)
             alwaysDividerLength = 0
@@ -71,9 +81,11 @@ public struct DividerLayout: Equatable, Sendable {
             return
         }
         dividerLength = revealed ? 0 : Self.length(hiding: positions.divider > positions.toggle)
-        // Parked while collapsed too, so a reveal never flashes the always-hidden items.
+        // Parked while collapsed too, so a reveal never flashes the always-hidden items. Its
+        // order is checked against the chevron, not the divider: the divider is pinned beside
+        // the chevron, and parked far away while revealed.
         alwaysDividerLength =
-            revealsAll ? Self.visibleLength : Self.length(hiding: positions.alwaysDivider > positions.divider)
+            revealsAll ? Self.visibleLength : Self.length(hiding: positions.alwaysDivider > positions.toggle)
         showsAlwaysDivider = revealsAll
     }
 
