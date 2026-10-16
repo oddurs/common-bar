@@ -6,9 +6,9 @@
 Hide menu bar items behind one chevron. Hold ⌘ to rearrange. **[oddurs.github.io/common-tools/bar](https://oddurs.github.io/common-tools/bar/)**
 
 - **One chevron.** Every item left of it moves off-screen. Click the chevron to bring them back.
-- **An always-hidden section.** Items left of a second, dotted line stay hidden even when the rest are showing. ⌥-click the chevron to see them.
+- **An optional always-hidden section.** Turn it on in Settings, and items left of a dotted line stay hidden even when the rest are showing. ⌥-click the chevron to see them.
 - **Arranged where it lives.** You choose what hides by ⌘-dragging icons past the chevron, the same way macOS rearranges the menu bar.
-- **A small Settings window.** Open at login, how long revealed items stay, and which gestures reveal them.
+- **A small Settings window.** Open at login, how long revealed items stay, which gestures reveal them, and the always-hidden section.
 - **Several ways to reveal.** Rest the pointer on empty menu bar space, click it, or swipe down on the bar. Swipe up to hide.
 - **Tidies up after itself.** Hidden items go away again after a few seconds, but never while you're still working in the menu bar or one of its menus.
 - **The chevron is the edge.** Drop an icon just past it and it hides. The invisible divider that does the hiding snaps back beside the chevron whenever the bar hides.
@@ -32,11 +32,11 @@ Requires macOS 14 or later.
 
 On first launch the hidden items are shown along with a short set of tips. **How to Arrange…** in the right-click menu brings them back.
 
-- **Choose what hides:** hold ⌘ over the menu bar and drag icons past the chevron to hide them, past the dotted line to keep them always hidden, or right of the chevron to keep them visible.
+- **Choose what hides:** hold ⌘ over the menu bar and drag icons past the chevron to hide them, or right of the chevron to keep them visible. With the always-hidden section on, drag them past the dotted line to keep them always hidden.
 - **Show hidden items:** click the chevron, click empty menu bar space, rest the pointer on empty menu bar space, or swipe down on the menu bar.
-- **Show always-hidden items too:** ⌥-click the chevron. ⌥-click again, or click the chevron, to hide everything.
+- **Show always-hidden items too:** turn on **Always-hidden section** in Settings, then ⌥-click the chevron. ⌥-click again, or click the chevron, to hide everything. With the section off, ⌥-click acts like a click.
 - **Hide them again:** click the chevron or empty space, or swipe up. Items shown by a click or swipe hide after 10 seconds by default, but not while the pointer is in the menu bar, a menu is open, or a mouse button is held. Items shown by hovering hide half a second after the pointer leaves the menu bar.
-- **Rearrange at any time:** hold ⌘ over the menu bar. The dotted line and every hidden item appear until you let go, and stay put mid-drag.
+- **Rearrange at any time:** hold ⌘ over the menu bar. Every hidden item, and the dotted line if the section is on, appears until you let go, and stay put mid-drag.
 - **Menu:** right-click (or Control-click) the chevron for **How to Arrange…**, **Settings…**, and **Quit Common Bar**.
 
 **Settings** opens from that menu (⌘,) or by opening Common Bar again while it runs:

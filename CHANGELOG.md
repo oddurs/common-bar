@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- The always-hidden section is optional and off by default. Turn it on with **Always-hidden section** in Settings → General. While it's off there's no dotted line, ⌥-click acts like a click, and icons that were behind the dotted line hide and show with the rest. Turning it back on restores where the line was.
+
 ### Fixed
 
 - Icons dragged just past the chevron now hide. Before, they had to go left of a separate line that could drift away from the chevron, and icons dropped between the two stayed visible. The chevron is now the edge, and the solid line is gone; the dotted always-hidden line is unchanged.

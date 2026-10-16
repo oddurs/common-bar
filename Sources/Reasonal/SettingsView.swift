@@ -8,6 +8,7 @@ struct SettingsView: View {
     @AppStorage(Preferences.showOnScroll) private var showOnScroll = true
     @AppStorage(Preferences.showOnClick) private var showOnClick = true
     @AppStorage(Preferences.autoHide) private var autoHide = AutoHide.standard
+    @AppStorage(Preferences.alwaysHiddenSection) private var alwaysHiddenSection = false
     @State private var openAtLogin = LoginItem.isEnabled
     @State private var loginError: String?
 
@@ -20,12 +21,9 @@ struct SettingsView: View {
             } header: {
                 Text("Show Hidden Icons When")
             } footer: {
-                Text(
-                    "Hold ⌘ over the menu bar to show every icon and drag them between sections. "
-                        + "Option-click the chevron to include always-hidden icons."
-                )
-                .font(.callout)
-                .foregroundStyle(.secondary)
+                Text("Hold ⌘ over the menu bar to show every icon, then drag one past the chevron to hide it.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
 
             Section {
@@ -35,12 +33,13 @@ struct SettingsView: View {
                         Text(Self.title(for: delay)).tag(delay)
                     }
                 }
+                Toggle("Always-hidden section", isOn: $alwaysHiddenSection)
             } header: {
                 Text("General")
             } footer: {
-                if let loginError {
-                    Text(loginError).foregroundStyle(.secondary)
-                }
+                Text(loginError ?? "Icons left of the dotted line show only with ⌥-click or while holding ⌘.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
 
             CommonToolsSection()

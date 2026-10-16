@@ -47,7 +47,8 @@ public struct ItemPositions: Equatable, Sendable {
 
 /// How wide each divider is and whether the always-hidden line shows. A stretched
 /// divider pushes everything left of it off-screen. The first divider never shows: the
-/// chevron beside it marks that boundary.
+/// chevron beside it marks that boundary. With the always-hidden section turned off, its
+/// divider stays at zero width, so the icons behind it hide and show with the rest.
 public struct DividerLayout: Equatable, Sendable {
     public static let hiddenLength: CGFloat = 10_000
     public static let visibleLength: CGFloat = 12
@@ -56,9 +57,15 @@ public struct DividerLayout: Equatable, Sendable {
     public var alwaysDividerLength: CGFloat
     public var showsAlwaysDivider: Bool
 
-    public init(reveal: Reveal, isPeeking: Bool, positions: ItemPositions) {
+    public init(reveal: Reveal, isPeeking: Bool, positions: ItemPositions, alwaysHidden: Bool) {
         let revealed = isPeeking || !reveal.isCollapsed
         let revealsAll = isPeeking || (revealed && reveal.showsAlwaysHidden)
+        guard alwaysHidden else {
+            dividerLength = revealed ? 0 : Self.length(hiding: positions.divider > positions.toggle)
+            alwaysDividerLength = 0
+            showsAlwaysDivider = false
+            return
+        }
         dividerLength = revealed ? 0 : Self.length(hiding: positions.divider > positions.toggle)
         // Parked while collapsed too, so a reveal never flashes the always-hidden items.
         alwaysDividerLength =
