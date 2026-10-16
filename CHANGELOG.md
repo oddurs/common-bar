@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-16
+
+### Changed
+
+- New app icon, in the blue glass style shared by Common Stats, Common Keys, and Common Bar.
+
 ## [0.2.0] - 2026-10-16
 
 ### Added
@@ -31,6 +37,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - First-launch tips, also available from **How to Arrange…** in the right-click menu, along with **Open at Login** and **Quit**.
 - Universal (Apple silicon and Intel) builds for macOS 14 and later.
 
-[Unreleased]: https://github.com/oddurs/common-bar/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/oddurs/common-bar/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/oddurs/common-bar/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/oddurs/common-bar/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/oddurs/common-bar/releases/tag/v0.1.0
