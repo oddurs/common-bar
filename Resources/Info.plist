@@ -2,14 +2,16 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleName</key>
-	<string>Reasonal</string>
 	<key>CFBundleDisplayName</key>
-	<string>Reasonal</string>
-	<key>CFBundleIdentifier</key>
-	<string>com.oddurs.reasonal</string>
+	<string>Common Bar</string>
 	<key>CFBundleExecutable</key>
 	<string>Reasonal</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.oddurs.reasonal</string>
+	<key>CFBundleName</key>
+	<string>Common Bar</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -22,5 +24,7 @@
 	<true/>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2026 Oddur Sigurdsson</string>
 </dict>
 </plist>

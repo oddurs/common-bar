@@ -138,7 +138,8 @@ final class MenuBarController: NSObject {
 
         let symbol = isCollapsed ? "chevron.compact.left" : "chevron.compact.right"
         guard symbol != chevronSymbol,
-              let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil) else { return }
+            let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+        else { return }
         if motion && chevronSymbol != nil {
             chevron.setSymbolImage(image, contentTransition: .replace.downUp)
         } else {
@@ -153,7 +154,8 @@ final class MenuBarController: NSObject {
     /// from the right edge as it moves, which is known before the items are laid out.
     private var dividerIsLeftOfToggle: Bool {
         let defaults = UserDefaults.standard
-        return defaults.double(forKey: Self.positionKey("divider")) > defaults.double(forKey: Self.positionKey("toggle"))
+        return defaults.double(forKey: Self.positionKey("divider"))
+            > defaults.double(forKey: Self.positionKey("toggle"))
     }
 
     // MARK: Events
@@ -162,7 +164,8 @@ final class MenuBarController: NSObject {
         switch event.type {
         case .leftMouseDown:
             if Preferences.isOn(Preferences.showOnClick),
-               MenuBar.isEmptySpace(NSEvent.mouseLocation, ignoring: Self.itemNames) {
+                MenuBar.isEmptySpace(NSEvent.mouseLocation, ignoring: Self.itemNames)
+            {
                 setCollapsed(!isCollapsed)
             }
         case .scrollWheel:
@@ -296,7 +299,8 @@ final class MenuBarController: NSObject {
                 guard let self, !self.isCollapsed else { return }
                 // Wait while the user is still working in the menu bar or one of its menus.
                 if self.isPeeking || MenuBar.contains(NSEvent.mouseLocation) || MenuBar.isMenuOpen
-                    || NSEvent.pressedMouseButtons != 0 {
+                    || NSEvent.pressedMouseButtons != 0
+                {
                     self.scheduleAutoCollapse()
                     return
                 }
@@ -321,7 +325,8 @@ final class MenuBarController: NSObject {
         menu.addItem(login)
         menu.addItem(.separator())
 
-        menu.addItem(NSMenuItem(title: "Quit Reasonal", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(
+            NSMenuItem(title: "Quit Reasonal", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
         toggle.menu = menu
         toggle.button?.performClick(nil)
@@ -340,9 +345,10 @@ final class MenuBarController: NSObject {
         let popover = NSPopover()
         popover.behavior = .transient
         popover.delegate = self
-        popover.contentViewController = NSHostingController(rootView: TipsView { [weak popover] in
-            popover?.performClose(nil)
-        })
+        popover.contentViewController = NSHostingController(
+            rootView: TipsView { [weak popover] in
+                popover?.performClose(nil)
+            })
         tipsPopover = popover
         NSApp.activate()
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)

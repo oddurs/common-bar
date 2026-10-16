@@ -57,8 +57,9 @@ enum MenuBar {
         let list = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] ?? []
         return list.compactMap { info in
             guard let layer = info[kCGWindowLayer as String] as? Int,
-                  let bounds = info[kCGWindowBounds as String] as? NSDictionary,
-                  let frame = CGRect(dictionaryRepresentation: bounds) else { return nil }
+                let bounds = info[kCGWindowBounds as String] as? NSDictionary,
+                let frame = CGRect(dictionaryRepresentation: bounds)
+            else { return nil }
             return Window(name: info[kCGWindowName as String] as? String ?? "", layer: layer, frame: frame)
         }
     }

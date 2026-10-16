@@ -1,0 +1,36 @@
+# Working in this repository
+
+Common Bar is a native macOS menu bar app written in Swift (AppKit plus SwiftUI) with no package dependencies. It hides the menu bar items left of an invisible divider.
+
+## The seam
+
+Do all automation through `scripts/task`. CI and the git hooks call nothing else.
+
+```sh
+scripts/task fmt       # format in place
+scripts/task lint      # swift-format lint --strict, then a build with warnings as errors
+scripts/task test      # unit tests
+scripts/task build     # universal "build/Common Bar.app"
+scripts/task check     # lint + test + build
+```
+
+## Workflow
+
+- Never commit to `main`. It only moves forward when a pull request is merged; the `pre-push` hook and branch protection both enforce this.
+- One unit of work gets one worktree, one branch, and one pull request: `scripts/agent start <type>/<slug>`, then work in the printed path, `scripts/agent commit`, `scripts/agent pr`, and `scripts/agent done` after the merge.
+- Branch types: `feat fix chore docs perf refactor test`.
+- Run `scripts/task check` until it is green before opening a pull request. Never use `--no-verify`.
+- In the pull request description, state the problem, the approach, and where a reviewer should be sceptical.
+
+## Commits
+
+Conventional Commits: `type(scope): subject`. Write the subject in the imperative, at most 72 characters, with no trailing period. The body says why. Never add assistant or tool attribution: no co-author trailers, no "generated with" footers. The `commit-msg` hook rejects them.
+
+## Code
+
+- The app was called Reasonal. Keep the bundle id `com.oddurs.reasonal`, the `Reasonal` executable target, the status item autosave names, and the UserDefaults keys: existing installs keep their item positions, preferences, and login item only while these stay put. `BundleTests` guards the bundle identifiers.
+- Only the visible name is Common Bar: `CFBundleName`, `CFBundleDisplayName`, and menu text.
+- `Sources/Reasonal/MenuBarController.swift` owns the status items and the reveal logic. `MenuBar.swift` answers where things are in the menu bar. Nothing needs a permission prompt; keep it that way, and don't add private APIs.
+- Status item positions are read from the `NSStatusItem Preferred Position <name>` defaults macOS writes, because item windows aren't laid out at launch.
+- A bug fix comes with the test that would have caught it.
+- The app icon comes from `swift scripts/make-icon.swift`, which writes `Resources/AppIcon.icns` and `docs/icon.png`. Edit the script, not the images.
