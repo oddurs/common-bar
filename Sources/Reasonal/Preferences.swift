@@ -7,6 +7,7 @@ enum Preferences {
     static let showOnClick = "showOnClick"
     static let autoHide = "autoHide"
     static let alwaysHiddenSection = "alwaysHiddenSection"
+    static let spacers = "spacers"
 
     static func register() {
         UserDefaults.standard.register(defaults: [
@@ -15,6 +16,7 @@ enum Preferences {
             showOnClick: true,
             autoHide: AutoHide.standard.rawValue,
             alwaysHiddenSection: false,
+            spacers: 0,
         ])
     }
 
@@ -24,5 +26,9 @@ enum Preferences {
 
     static var autoHideDelay: AutoHide {
         AutoHide(stored: UserDefaults.standard.object(forKey: autoHide))
+    }
+
+    static var spacerCount: Int {
+        Spacers.count(stored: UserDefaults.standard.object(forKey: spacers))
     }
 }

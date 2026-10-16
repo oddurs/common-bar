@@ -1,12 +1,15 @@
 import Foundation
 
 /// The status items' autosave names. macOS saves each item's position under its name,
-/// and `MenuBar.isEmptySpace` excludes the app's own windows by name, so these never change.
+/// so these never change.
 public enum ItemName {
     public static let toggle = "toggle"
     public static let divider = "divider"
     public static let alwaysDivider = "alwaysDivider"
     public static let all: Set<String> = [toggle, divider, alwaysDivider]
+
+    /// Spacers are numbered from 1: `spacer1`, `spacer2`, …
+    public static func spacer(_ index: Int) -> String { "spacer\(index + 1)" }
 }
 
 /// Each status item's saved distance from the right edge of the menu bar; larger is

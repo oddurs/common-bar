@@ -42,6 +42,14 @@ import Testing
         #expect(find([divider, chevron, narrow, wide]) == chevron)
     }
 
+    @Test func aSpacerRightOfTheChevronIsNotMistakenForTheDivider() {
+        // A spacer is 8 pt long, so 24 pt on screen: wider than any bare padding.
+        let divider = CGRect(x: 1172, y: 0, width: 16, height: 33)
+        let spacer = CGRect(x: 1214, y: 0, width: 24, height: 33)
+        let icon = CGRect(x: 1238, y: 0, width: 34, height: 33)
+        #expect(find([divider, chevron, spacer, icon]) == chevron)
+    }
+
     @Test func itemsThatDoNotTouchAreNotAPair() {
         let divider = CGRect(x: 1160, y: 0, width: 16, height: 33)
         #expect(find([divider, chevron]) == nil)

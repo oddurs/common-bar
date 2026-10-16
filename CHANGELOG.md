@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- Spacers: blank gaps you drag between menu bar icons to group them. Choose up to five under **Spacers** in Settings. They're invisible except while you hold ⌘, when a dashed outline shows where each one is.
+
 ### Changed
 
 - The first-launch tips are now an animated how-to played in the menu bar beside the chevron: holding ⌘ and dragging an icon past the chevron to hide it. It plays three times, stops on any click or when you hold ⌘, and **How to Arrange…** plays it again.
