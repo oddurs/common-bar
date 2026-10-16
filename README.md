@@ -6,6 +6,7 @@
 Hide menu bar items behind an invisible divider. Hold ⌘ to rearrange. **[oddurs.github.io/common-tools/bar](https://oddurs.github.io/common-tools/bar/)**
 
 - **One chevron, one invisible line.** Every item left of the line moves off-screen. Click the chevron to bring them back.
+- **An always-hidden section.** Items left of a second, dotted line stay hidden even when the rest are showing. ⌥-click the chevron to see them.
 - **No settings window.** You choose what hides by ⌘-dragging icons across the line, the same way macOS rearranges the menu bar.
 - **Several ways to reveal.** Rest the pointer on empty menu bar space, click it, or swipe down on the bar. Swipe up to hide.
 - **Tidies up after itself.** Hidden items go away again after a few seconds, but never while you're still working in the menu bar or one of its menus.
@@ -30,10 +31,11 @@ Requires macOS 14 or later.
 
 On first launch the hidden items are shown along with a short set of tips. **How to Arrange…** in the right-click menu brings them back.
 
-- **Choose what hides:** hold ⌘ and drag icons to the left of the line to hide them, or to the right of it to keep them visible.
+- **Choose what hides:** hold ⌘ over the menu bar and drag icons left of the line to hide them, past the dotted line to keep them always hidden, or right of the line to keep them visible.
 - **Show hidden items:** click the chevron, click empty menu bar space, rest the pointer on empty menu bar space, or swipe down on the menu bar.
+- **Show always-hidden items too:** ⌥-click the chevron. ⌥-click again, or click the chevron, to hide everything.
 - **Hide them again:** click the chevron or empty space, or swipe up. Items shown by a click or swipe hide after 8 seconds, but not while the pointer is in the menu bar, a menu is open, or a mouse button is held. Items shown by hovering hide half a second after the pointer leaves the menu bar.
-- **Rearrange at any time:** hold ⌘ over the menu bar. The line and the hidden items appear until you let go, and stay put mid-drag.
+- **Rearrange at any time:** hold ⌘ over the menu bar. Both lines and every hidden item appear until you let go, and stay put mid-drag.
 - **Menu:** right-click (or Control-click) the chevron for **How to Arrange…**, **Open at Login**, and **Quit**.
 
 Hover, click, and swipe can each be turned off from Terminal:

@@ -1,4 +1,5 @@
 import AppKit
+import BarKit
 import ServiceManagement
 import SwiftUI
 import Symbols
@@ -10,65 +11,41 @@ import Symbols
 @MainActor
 final class MenuBarController: NSObject {
     private enum Metric {
-        static let hiddenLength: CGFloat = 10_000
-        static let dividerLength: CGFloat = 12
         static let toggleLength: CGFloat = 24
-        static let peekDelay: TimeInterval = 0.2
-        static let hoverDelay: TimeInterval = 0.25
-        static let hoverExitDelay: TimeInterval = 0.5
-        static let scrollThreshold: CGFloat = 6
-        static let scrollGestureGap: TimeInterval = 0.3
         static let pollInterval: TimeInterval = 1.0 / 30
         static let autoCollapse: TimeInterval = 8
         static let fadeDuration: TimeInterval = 0.12
     }
 
     private static let onboardedKey = "onboarded"
-    private static let itemNames: Set<String> = ["toggle", "divider", "alwaysDivider"]
 
     private let toggle: NSStatusItem
     private let divider: NSStatusItem
     private let alwaysDivider: NSStatusItem
     private let chevron = PassthroughImageView()
     private var chevronSymbol: String?
-    private var isCollapsed = true
-    private var isPeeking = false
-    private var showsAlwaysHidden = false
-    private var commandHeldSince: Date?
+    private var reveal: Reveal
+    private var peek = Peek()
+    private var hover = Hover()
+    private var scroll = ScrollGesture()
     private var poll: Timer?
     private var collapseTimer: Timer?
     private var eventMonitor: Any?
     private var tipsPopover: NSPopover?
 
-    // Hover
-    private var revealedByHover = false
-    private var hoverArmed = true
-    private var hoverSince: Date?
-    private var hoverExitSince: Date?
-
-    // Scroll
-    private var scrollTotal: CGFloat = 0
-    private var scrollHandled = false
-    private var lastScroll: TimeInterval = 0
-
     override init() {
         Preferences.register()
-        // Without a saved position a new item lands at the far left, which on a crowded
-        // notched display is behind the notch. Start them beside the system items, each
-        // just left of the one before, wherever the user has since moved that one.
-        Self.seedPosition(0, for: "toggle")
-        Self.seedPosition(Self.position(of: "toggle") + 1, for: "divider")
-        Self.seedPosition(Self.position(of: "divider") + 1, for: "alwaysDivider")
-        isCollapsed = UserDefaults.standard.bool(forKey: Self.onboardedKey)
+        Self.seedPositions()
+        reveal = Reveal(isCollapsed: UserDefaults.standard.bool(forKey: Self.onboardedKey))
 
         toggle = NSStatusBar.system.statusItem(withLength: Metric.toggleLength)
         divider = NSStatusBar.system.statusItem(withLength: 0)
         alwaysDivider = NSStatusBar.system.statusItem(withLength: 0)
         super.init()
 
-        toggle.autosaveName = "toggle"
-        divider.autosaveName = "divider"
-        alwaysDivider.autosaveName = "alwaysDivider"
+        toggle.autosaveName = ItemName.toggle
+        divider.autosaveName = ItemName.divider
+        alwaysDivider.autosaveName = ItemName.alwaysDivider
 
         if let button = toggle.button {
             button.target = self
@@ -99,7 +76,7 @@ final class MenuBarController: NSObject {
 
         apply(animated: false)
 
-        if !isCollapsed {
+        if !reveal.isCollapsed {
             // Give the status bar a moment to lay the items out before anchoring to one.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                 MainActor.assumeIsolated { self?.showTips() }
@@ -116,8 +93,22 @@ final class MenuBarController: NSObject {
         UserDefaults.standard.double(forKey: positionKey(name))
     }
 
-    private static func seedPosition(_ position: Double, for name: String) {
-        if UserDefaults.standard.object(forKey: positionKey(name)) == nil {
+    private static func savedPosition(of name: String) -> Double? {
+        UserDefaults.standard.object(forKey: positionKey(name)) == nil ? nil : position(of: name)
+    }
+
+    /// Writes a starting position for each item macOS hasn't saved one for yet.
+    private static func seedPositions() {
+        let seeded = ItemPositions.seeded(
+            toggle: savedPosition(of: ItemName.toggle),
+            divider: savedPosition(of: ItemName.divider),
+            alwaysDivider: savedPosition(of: ItemName.alwaysDivider))
+        let positions = [
+            (ItemName.toggle, seeded.toggle),
+            (ItemName.divider, seeded.divider),
+            (ItemName.alwaysDivider, seeded.alwaysDivider),
+        ]
+        for (name, position) in positions where savedPosition(of: name) == nil {
             UserDefaults.standard.set(position, forKey: positionKey(name))
         }
     }
@@ -125,36 +116,32 @@ final class MenuBarController: NSObject {
     // MARK: State
 
     private func setCollapsed(_ collapsed: Bool, showingAlwaysHidden: Bool = false) {
-        guard collapsed != isCollapsed || showingAlwaysHidden != showsAlwaysHidden else { return }
-        isCollapsed = collapsed
-        showsAlwaysHidden = !collapsed && showingAlwaysHidden
-        revealedByHover = false
+        guard reveal.set(collapsed: collapsed, showingAlwaysHidden: showingAlwaysHidden) else { return }
         // A deliberate toggle shouldn't be undone by hover until the pointer leaves the bar.
-        hoverArmed = false
+        hover.toggled()
         collapseTimer?.invalidate()
         if !collapsed { scheduleAutoCollapse() }
         apply()
     }
 
     private func apply(animated: Bool = true) {
-        let revealed = isPeeking || !isCollapsed
-        let revealsAll = isPeeking || (revealed && showsAlwaysHidden)
         let motion = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-
-        divider.length = revealed ? Metric.dividerLength : length(hiding: isOrdered("divider", leftOf: "toggle"))
-        // Parked while collapsed too, so a reveal never flashes the always-hidden items.
-        alwaysDivider.length =
-            revealsAll
-            ? Metric.dividerLength
-            : length(hiding: isOrdered("alwaysDivider", leftOf: "divider"))
+        let layout = DividerLayout(
+            reveal: reveal, isPeeking: peek.isPeeking,
+            positions: ItemPositions(
+                toggle: Self.position(of: ItemName.toggle),
+                divider: Self.position(of: ItemName.divider),
+                alwaysDivider: Self.position(of: ItemName.alwaysDivider)))
+        divider.length = layout.dividerLength
+        alwaysDivider.length = layout.alwaysDividerLength
 
         NSAnimationContext.runAnimationGroup { context in
             context.duration = motion ? Metric.fadeDuration : 0
-            divider.button?.animator().alphaValue = revealed ? 1 : 0
-            alwaysDivider.button?.animator().alphaValue = revealsAll ? 1 : 0
+            divider.button?.animator().alphaValue = layout.showsDivider ? 1 : 0
+            alwaysDivider.button?.animator().alphaValue = layout.showsAlwaysDivider ? 1 : 0
         }
 
-        let symbol = isCollapsed ? "chevron.compact.left" : "chevron.compact.right"
+        let symbol = reveal.isCollapsed ? "chevron.compact.left" : "chevron.compact.right"
         guard symbol != chevronSymbol,
             let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
         else { return }
@@ -164,19 +151,7 @@ final class MenuBarController: NSObject {
             chevron.image = image
         }
         chevronSymbol = symbol
-        toggle.button?.setAccessibilityLabel(isCollapsed ? "Show hidden menu bar items" : "Hide menu bar items")
-    }
-
-    /// A divider dragged out of order would push the items meant to stay visible
-    /// off-screen with the rest, including the toggle, so it is left unstretched.
-    private func length(hiding inOrder: Bool) -> CGFloat {
-        inOrder ? Metric.hiddenLength : 0
-    }
-
-    /// macOS records each item's distance from the right edge as it moves, which is
-    /// known before the items are laid out.
-    private func isOrdered(_ name: String, leftOf other: String) -> Bool {
-        Self.position(of: name) > Self.position(of: other)
+        toggle.button?.setAccessibilityLabel(reveal.isCollapsed ? "Show hidden menu bar items" : "Hide menu bar items")
     }
 
     // MARK: Events
@@ -185,9 +160,9 @@ final class MenuBarController: NSObject {
         switch event.type {
         case .leftMouseDown:
             if Preferences.isOn(Preferences.showOnClick),
-                MenuBar.isEmptySpace(NSEvent.mouseLocation, ignoring: Self.itemNames)
+                MenuBar.isEmptySpace(NSEvent.mouseLocation, ignoring: ItemName.all)
             {
-                setCollapsed(!isCollapsed)
+                setCollapsed(!reveal.isCollapsed)
             }
         case .scrollWheel:
             scrolled(event)
@@ -196,27 +171,16 @@ final class MenuBarController: NSObject {
         }
     }
 
-    /// Pulling down on the menu bar reveals; pushing up hides.
     private func scrolled(_ event: NSEvent) {
         guard Preferences.isOn(Preferences.showOnScroll), MenuBar.contains(NSEvent.mouseLocation) else { return }
-        if event.phase == .began || event.timestamp - lastScroll > Metric.scrollGestureGap {
-            scrollTotal = 0
-            scrollHandled = false
-        }
-        lastScroll = event.timestamp
-        guard !scrollHandled else { return }
-
-        // In finger terms, so natural and classic scrolling feel the same; a wheel
-        // reports lines rather than points.
-        let delta = event.isDirectionInvertedFromDevice ? event.scrollingDeltaY : -event.scrollingDeltaY
-        scrollTotal += event.hasPreciseScrollingDeltas ? delta : delta * 10
-        guard abs(scrollTotal) >= Metric.scrollThreshold else { return }
-        scrollHandled = true
-        setCollapsed(scrollTotal < 0)
+        let intent = scroll.add(
+            deltaY: Double(event.scrollingDeltaY), began: event.phase == .began, timestamp: event.timestamp,
+            precise: event.hasPreciseScrollingDeltas, inverted: event.isDirectionInvertedFromDevice)
+        if let intent { setCollapsed(intent == .hide) }
     }
 
     private func startPolling() {
-        guard poll == nil, isPeeking || revealedByHover || MenuBar.contains(NSEvent.mouseLocation) else { return }
+        guard poll == nil, peek.isPeeking || hover.revealed || MenuBar.contains(NSEvent.mouseLocation) else { return }
         let timer = Timer(timeInterval: Metric.pollInterval, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
         }
@@ -230,66 +194,33 @@ final class MenuBarController: NSObject {
         let commandOnly = modifiers == .command
         let mouseDown = NSEvent.pressedMouseButtons != 0
         let inMenuBar = MenuBar.contains(pointer)
+        let now = Date()
 
-        updatePeek(commandOnly: commandOnly, inMenuBar: inMenuBar, mouseDown: mouseDown)
-        if !isPeeking {
-            updateHover(pointer: pointer, inMenuBar: inMenuBar, idle: modifiers.isEmpty && !mouseDown)
+        if peek.update(commandOnly: commandOnly, inMenuBar: inMenuBar, mouseDown: mouseDown, now: now) {
+            apply()
+        }
+        if !peek.isPeeking {
+            let action = hover.update(
+                isCollapsed: reveal.isCollapsed,
+                overEmptySpace: inMenuBar && MenuBar.isEmptySpace(pointer, ignoring: ItemName.all),
+                inMenuBar: inMenuBar, idle: modifiers.isEmpty && !mouseDown,
+                enabled: Preferences.isOn(Preferences.showOnHover), menuOpen: MenuBar.isMenuOpen, now: now)
+            switch action {
+            case .none:
+                break
+            case .reveal:
+                reveal.expand()
+                apply()
+            case .collapse:
+                setCollapsed(true)
+            }
         }
 
-        if !isPeeking && !revealedByHover && !inMenuBar {
+        // The pointer has left the bar, so hover may reveal again.
+        if !peek.isPeeking && !hover.revealed && !inMenuBar {
             poll?.invalidate()
             poll = nil
-            hoverArmed = true
-        }
-    }
-
-    private func updatePeek(commandOnly: Bool, inMenuBar: Bool, mouseDown: Bool) {
-        if isPeeking {
-            // Changing the divider mid-drag would yank the item out from under the cursor.
-            if !commandOnly && !mouseDown {
-                isPeeking = false
-                apply()
-            }
-        } else if commandOnly && inMenuBar && !mouseDown {
-            // The delay keeps ⌘-Tab and shortcuts from flashing the bar.
-            let since = commandHeldSince ?? Date()
-            commandHeldSince = since
-            if Date().timeIntervalSince(since) >= Metric.peekDelay {
-                isPeeking = true
-                commandHeldSince = nil
-                apply()
-            }
-        } else {
-            commandHeldSince = nil
-        }
-    }
-
-    private func updateHover(pointer: NSPoint, inMenuBar: Bool, idle: Bool) {
-        let overEmptySpace = inMenuBar && MenuBar.isEmptySpace(pointer, ignoring: Self.itemNames)
-        if !overEmptySpace { hoverSince = nil }
-
-        if isCollapsed && overEmptySpace && hoverArmed && idle && Preferences.isOn(Preferences.showOnHover) {
-            let since = hoverSince ?? Date()
-            hoverSince = since
-            if Date().timeIntervalSince(since) >= Metric.hoverDelay {
-                isCollapsed = false
-                revealedByHover = true
-                hoverSince = nil
-                apply()
-            }
-        }
-
-        guard revealedByHover else { return }
-        // Stay open while the pointer is in the bar or in a menu opened from it.
-        if inMenuBar || !idle || MenuBar.isMenuOpen {
-            hoverExitSince = nil
-            return
-        }
-        let since = hoverExitSince ?? Date()
-        hoverExitSince = since
-        if Date().timeIntervalSince(since) >= Metric.hoverExitDelay {
-            hoverExitSince = nil
-            setCollapsed(true)
+            hover.rearm()
         }
     }
 
@@ -325,21 +256,16 @@ final class MenuBarController: NSObject {
             showMenu()
             return
         }
-        if modifiers.contains(.option) {
-            // Opens everything, or closes it if everything is already showing.
-            let allShowing = !isCollapsed && showsAlwaysHidden
-            setCollapsed(allShowing, showingAlwaysHidden: !allShowing)
-        } else {
-            setCollapsed(!isCollapsed)
-        }
+        let next = reveal.afterClick(option: modifiers.contains(.option))
+        setCollapsed(next.collapsed, showingAlwaysHidden: next.showingAlwaysHidden)
     }
 
     private func scheduleAutoCollapse() {
         collapseTimer = Timer.scheduledTimer(withTimeInterval: Metric.autoCollapse, repeats: false) { [weak self] _ in
             MainActor.assumeIsolated {
-                guard let self, !self.isCollapsed else { return }
+                guard let self, !self.reveal.isCollapsed else { return }
                 // Wait while the user is still working in the menu bar or one of its menus.
-                if self.isPeeking || MenuBar.contains(NSEvent.mouseLocation) || MenuBar.isMenuOpen
+                if self.peek.isPeeking || MenuBar.contains(NSEvent.mouseLocation) || MenuBar.isMenuOpen
                     || NSEvent.pressedMouseButtons != 0
                 {
                     self.scheduleAutoCollapse()
@@ -380,7 +306,7 @@ final class MenuBarController: NSObject {
     @objc private func showTips() {
         guard let button = toggle.button, tipsPopover == nil else { return }
         collapseTimer?.invalidate()
-        isCollapsed = false
+        reveal.expand()
         apply()
 
         let popover = NSPopover()
