@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- Quieter menu bar icons: a smaller chevron and a finer dotted line.
 - The always-hidden section is optional and off by default. Turn it on with **Always-hidden section** in Settings → General. While it's off there's no dotted line, ⌥-click acts like a click, and icons that were behind the dotted line hide and show with the rest. Turning it back on restores where the line was.
 
 ### Fixed
