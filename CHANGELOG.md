@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- No more blank gaps when hidden icons are showing. The hidden icons used to sit 16 pt away from the chevron, and with the always-hidden section off there was another 16 pt gap among them. Both dividers now step out of the way while they have nothing to do.
+
 ### Added
 
 - Spacers: blank gaps you drag between menu bar icons to group them. Choose up to five under **Spacers** in Settings. They're invisible except while you hold ⌘, when a dashed outline shows where each one is.
