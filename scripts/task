@@ -20,9 +20,6 @@ test_flags() {
 }
 
 sources="Package.swift Sources Tests scripts/make-icon.swift"
-app="build/Common Bar.app"
-# The SwiftPM product, which keeps its pre-rename name.
-executable="Reasonal"
 
 case "${1:-}" in
 fmt)
@@ -48,16 +45,19 @@ test)
 build)
     # One build per architecture, joined with lipo: `--arch a --arch b`
     # needs Xcode's build system, which Command Line Tools lack.
-    set --
+    bins=""
     for arch in arm64 x86_64; do
         echo "==> building release for $arch"
         swift build -c release --triple "$arch-apple-macosx14.0"
-        set -- "$@" "$(swift build -c release --triple "$arch-apple-macosx14.0" --show-bin-path)/$executable"
+        bins="$bins $(swift build -c release --triple "$arch-apple-macosx14.0" --show-bin-path)/Reasonal"
     done
+    # The bundle carries the product name; the executable keeps the target's name.
+    app="build/Common Bar.app"
     echo "==> assembling $app"
     rm -rf "$app"
     mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-    lipo -create "$@" -output "$app/Contents/MacOS/$executable"
+    # shellcheck disable=SC2086
+    lipo -create $bins -output "$app/Contents/MacOS/Reasonal"
     cp Resources/Info.plist "$app/Contents/"
     cp Resources/AppIcon.icns "$app/Contents/Resources/"
     # Ad-hoc signature: enough for Gatekeeper on the building machine and for SMAppService.
