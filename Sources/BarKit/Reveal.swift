@@ -23,9 +23,10 @@ public struct Reveal: Equatable, Sendable {
     }
 
     /// Where a click on the chevron leads. A plain click toggles the hidden items; an
-    /// ⌥-click opens everything, or closes it if everything is already showing.
-    public func afterClick(option: Bool) -> (collapsed: Bool, showingAlwaysHidden: Bool) {
-        guard option else { return (!isCollapsed, false) }
+    /// ⌥-click opens everything, or closes it if everything is already showing. Without
+    /// an always-hidden section, an ⌥-click is a plain click.
+    public func afterClick(option: Bool, alwaysHidden: Bool) -> (collapsed: Bool, showingAlwaysHidden: Bool) {
+        guard option && alwaysHidden else { return (!isCollapsed, false) }
         let allShowing = !isCollapsed && showsAlwaysHidden
         return (allShowing, !allShowing)
     }

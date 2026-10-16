@@ -30,6 +30,8 @@ final class MenuBarController: NSObject {
     private var poll: Timer?
     private var collapseTimer: Timer?
     private var eventMonitor: Any?
+    private var preferencesObserver: Any?
+    private var alwaysHidden = Preferences.isOn(Preferences.alwaysHiddenSection)
     private var tipsPopover: NSPopover?
     private let settings = SettingsWindow()
 
@@ -68,6 +70,13 @@ final class MenuBarController: NSObject {
             matching: [.mouseMoved, .leftMouseDragged, .leftMouseDown, .scrollWheel]
         ) { [weak self] event in
             MainActor.assumeIsolated { self?.handle(event) }
+        }
+
+        // Settings apply at once; turning the always-hidden section off releases its icons.
+        preferencesObserver = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.preferencesChanged() }
         }
 
         apply(animated: false)
@@ -125,9 +134,12 @@ final class MenuBarController: NSObject {
     private func apply(animated: Bool = true) {
         let motion = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         if reveal.isCollapsed && !peek.isPeeking { pinDivider() }
-        let layout = DividerLayout(reveal: reveal, isPeeking: peek.isPeeking, positions: Self.positions)
+        let alwaysHidden = Preferences.isOn(Preferences.alwaysHiddenSection)
+        let layout = DividerLayout(
+            reveal: reveal, isPeeking: peek.isPeeking, positions: Self.positions, alwaysHidden: alwaysHidden)
         divider.length = layout.dividerLength
         alwaysDivider.length = layout.alwaysDividerLength
+        alwaysDivider.button?.setAccessibilityElement(alwaysHidden)
 
         NSAnimationContext.runAnimationGroup { context in
             context.duration = motion ? Metric.fadeDuration : 0
@@ -171,6 +183,17 @@ final class MenuBarController: NSObject {
         NSStatusBar.system.removeStatusItem(divider)
         UserDefaults.standard.set(target, forKey: Self.positionKey(ItemName.divider))
         divider = Self.makeDivider()
+    }
+
+    private func preferencesChanged() {
+        let enabled = Preferences.isOn(Preferences.alwaysHiddenSection)
+        // Item positions are saved to the same defaults on every move; only this setting matters here.
+        guard enabled != alwaysHidden else { return }
+        alwaysHidden = enabled
+        if !enabled && reveal.showsAlwaysHidden {
+            _ = reveal.set(collapsed: reveal.isCollapsed, showingAlwaysHidden: false)
+        }
+        apply()
     }
 
     // MARK: Events
@@ -265,7 +288,8 @@ final class MenuBarController: NSObject {
             showMenu()
             return
         }
-        let next = reveal.afterClick(option: modifiers.contains(.option))
+        let next = reveal.afterClick(
+            option: modifiers.contains(.option), alwaysHidden: Preferences.isOn(Preferences.alwaysHiddenSection))
         setCollapsed(next.collapsed, showingAlwaysHidden: next.showingAlwaysHidden)
     }
 

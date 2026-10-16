@@ -6,6 +6,7 @@ enum Preferences {
     static let showOnScroll = "showOnScroll"
     static let showOnClick = "showOnClick"
     static let autoHide = "autoHide"
+    static let alwaysHiddenSection = "alwaysHiddenSection"
 
     static func register() {
         UserDefaults.standard.register(defaults: [
@@ -13,6 +14,7 @@ enum Preferences {
             showOnScroll: true,
             showOnClick: true,
             autoHide: AutoHide.standard.rawValue,
+            alwaysHiddenSection: false,
         ])
     }
 

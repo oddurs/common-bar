@@ -7,12 +7,31 @@ import Testing
     let hidden = DividerLayout.hiddenLength
     let visible = DividerLayout.visibleLength
 
-    func layout(collapsed: Bool, all: Bool = false, peeking: Bool = false, _ positions: ItemPositions? = nil)
-        -> DividerLayout
-    {
+    func layout(
+        collapsed: Bool, all: Bool = false, peeking: Bool = false, alwaysHidden: Bool = true,
+        _ positions: ItemPositions? = nil
+    ) -> DividerLayout {
         var reveal = Reveal(isCollapsed: true)
         _ = reveal.set(collapsed: collapsed, showingAlwaysHidden: all)
-        return DividerLayout(reveal: reveal, isPeeking: peeking, positions: positions ?? seeded)
+        return DividerLayout(
+            reveal: reveal, isPeeking: peeking, positions: positions ?? seeded, alwaysHidden: alwaysHidden)
+    }
+
+    @Test func withoutAnAlwaysHiddenSectionItsDividerNeverStretchesOrShows() {
+        for l in [
+            layout(collapsed: true, alwaysHidden: false),
+            layout(collapsed: false, alwaysHidden: false),
+            layout(collapsed: false, all: true, alwaysHidden: false),
+            layout(collapsed: true, peeking: true, alwaysHidden: false),
+        ] {
+            #expect(l.alwaysDividerLength == 0)
+            #expect(!l.showsAlwaysDivider)
+        }
+    }
+
+    @Test func withoutAnAlwaysHiddenSectionTheChevronStillHidesEverythingLeftOfIt() {
+        #expect(layout(collapsed: true, alwaysHidden: false).dividerLength == hidden)
+        #expect(layout(collapsed: false, alwaysHidden: false).dividerLength == 0)
     }
 
     @Test func collapsedPushesBothSectionsOff() {
