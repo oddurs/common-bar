@@ -15,7 +15,6 @@ final class MenuBarController: NSObject {
         static let spacerLength: CGFloat = 8
         static let pollInterval: TimeInterval = 1.0 / 30
         static let fadeDuration: TimeInterval = 0.12
-        static let turnDuration: TimeInterval = 0.4
     }
 
     private static let onboardedKey = "onboarded"
@@ -25,7 +24,7 @@ final class MenuBarController: NSObject {
     private let toggle: NSStatusItem
     private let divider: DividerItem
     private let alwaysDivider: DividerItem
-    private let chevron = PassthroughImageView()
+    private let chevron = ChevronView()
     private var chevronPointsLeft: Bool?
     private var spacers: [NSStatusItem] = []
     private var syncingSpacers = false
@@ -64,7 +63,6 @@ final class MenuBarController: NSObject {
             chevron.image = Glyphs.chevron
             chevron.imageScaling = .scaleNone
             chevron.frame = button.bounds
-            chevron.autoresizingMask = [.width, .height]
             chevron.wantsLayer = true
             button.addSubview(chevron)
         }
@@ -158,11 +156,7 @@ final class MenuBarController: NSObject {
         guard reveal.isCollapsed != chevronPointsLeft else { return }
         let firstLayout = chevronPointsLeft == nil
         chevronPointsLeft = reveal.isCollapsed
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = motion && !firstLayout ? Metric.turnDuration : 0
-            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.34, 1.36, 0.64, 1)
-            chevron.animator().frameCenterRotation = reveal.isCollapsed ? 0 : 180
-        }
+        chevron.turn(to: reveal.isCollapsed ? 0 : .pi, animated: motion && !firstLayout)
         toggle.button?.setAccessibilityLabel(reveal.isCollapsed ? "Show hidden menu bar items" : "Hide menu bar items")
     }
 
@@ -382,9 +376,4 @@ extension MenuBarController: NSApplicationDelegate {
         showSettings()
         return false
     }
-}
-
-/// Lets clicks fall through to the status bar button underneath.
-private final class PassthroughImageView: NSImageView {
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }

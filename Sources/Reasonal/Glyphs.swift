@@ -8,8 +8,9 @@ enum Glyphs {
         static let canvas = NSSize(width: 6, height: 9)
         /// Horizontal and vertical reach of each arm from the tip: equal, so the tip is a right angle.
         static let arm: CGFloat = 3.5
-        /// Gap between the tip and the canvas edge, leaving room for the mitred point.
-        static let tipInset: CGFloat = 1
+        /// Gap between the tip and the canvas edge: room for the mitred point, and the amount
+        /// that puts the chevron's visual centre at the canvas centre, the point it turns about.
+        static let tipInset: CGFloat = 1.25
         static let stroke: CGFloat = 1.25
     }
 
