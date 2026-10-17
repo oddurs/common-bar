@@ -15,6 +15,7 @@ final class MenuBarController: NSObject {
         static let spacerLength: CGFloat = 8
         static let pollInterval: TimeInterval = 1.0 / 30
         static let fadeDuration: TimeInterval = 0.12
+        static let turnDuration: TimeInterval = 0.4
     }
 
     private static let onboardedKey = "onboarded"
@@ -24,6 +25,7 @@ final class MenuBarController: NSObject {
     private let toggle: NSStatusItem
     private let divider: DividerItem
     private let alwaysDivider: DividerItem
+    private let chevron = PassthroughImageView()
     private var chevronPointsLeft: Bool?
     private var spacers: [NSStatusItem] = []
     private var syncingSpacers = false
@@ -58,7 +60,13 @@ final class MenuBarController: NSObject {
             button.action = #selector(toggleClicked)
             // Menu bar extras respond on press, not release.
             button.sendAction(on: [.leftMouseDown, .rightMouseDown])
-            button.imagePosition = .imageOnly
+            // A view of its own, so the glyph can turn without the button's highlight turning too.
+            chevron.image = Glyphs.chevron
+            chevron.imageScaling = .scaleNone
+            chevron.frame = button.bounds
+            chevron.autoresizingMask = [.width, .height]
+            chevron.wantsLayer = true
+            button.addSubview(chevron)
         }
 
         // Mouse and scroll events need no permission. Modifiers and hover are polled,
@@ -133,8 +141,8 @@ final class MenuBarController: NSObject {
         let alwaysHidden = Preferences.isOn(Preferences.alwaysHiddenSection)
         let layout = DividerLayout(
             reveal: reveal, isPeeking: peek.isPeeking, positions: Self.positions, alwaysHidden: alwaysHidden)
-        divider.set(layout.divider)
-        alwaysDivider.set(layout.alwaysDivider)
+        divider.set(layout.divider, animated: motion)
+        alwaysDivider.set(layout.alwaysDivider, animated: motion)
 
         NSAnimationContext.runAnimationGroup { context in
             context.duration = motion ? Metric.fadeDuration : 0
@@ -144,10 +152,17 @@ final class MenuBarController: NSObject {
             }
         }
 
-        // Swapped outright, as other menu bar icons do.
+        // The chevron turns as the icons glide, pointing the way they are going: left, where
+        // the hidden icons wait, while closed; back towards them to close while open. The
+        // curve overshoots a touch and settles, over about as long as the glide.
         guard reveal.isCollapsed != chevronPointsLeft else { return }
+        let firstLayout = chevronPointsLeft == nil
         chevronPointsLeft = reveal.isCollapsed
-        toggle.button?.image = reveal.isCollapsed ? Glyphs.chevronLeft : Glyphs.chevronRight
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = motion && !firstLayout ? Metric.turnDuration : 0
+            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.34, 1.36, 0.64, 1)
+            chevron.animator().frameCenterRotation = reveal.isCollapsed ? 0 : 180
+        }
         toggle.button?.setAccessibilityLabel(reveal.isCollapsed ? "Show hidden menu bar items" : "Hide menu bar items")
     }
 
@@ -367,4 +382,9 @@ extension MenuBarController: NSApplicationDelegate {
         showSettings()
         return false
     }
+}
+
+/// Lets clicks fall through to the status bar button underneath.
+private final class PassthroughImageView: NSImageView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }

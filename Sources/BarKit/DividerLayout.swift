@@ -52,6 +52,17 @@ public enum DividerState: Equatable, Sendable {
 public struct DividerLayout: Equatable, Sendable {
     public static let stretchedLength: CGFloat = 10_000
 
+    /// How far a divider stretches to hide: until everything left of it is past the screen's
+    /// left edge, with room to spare. Revealed icons then glide in from just off-screen rather
+    /// than sweeping across thousands of points. Reaching only past the notch instead would
+    /// leave icons on screen behind it, where macOS's overflow rules reshuffle the bar.
+    /// `dividerEnd` is the divider's right edge and `padding` what macOS adds to its length.
+    public static func reach(dividerEnd: CGFloat, screenMinX: CGFloat, padding: CGFloat) -> CGFloat {
+        min(max(dividerEnd - screenMinX - padding + offscreenMargin, 0), stretchedLength)
+    }
+
+    static let offscreenMargin: CGFloat = 64
+
     public var divider: DividerState
     public var alwaysDivider: DividerState
 
