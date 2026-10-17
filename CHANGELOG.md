@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
-- No more blank gaps when hidden icons are showing. The hidden icons used to sit 16 pt away from the chevron, and with the always-hidden section off there was another 16 pt gap among them. Both dividers now step out of the way while they have nothing to do.
+- No more blank gaps when hidden icons are showing. The hidden icons used to sit 16 pt away from the chevron, and with the always-hidden section off there was another 16 pt gap among them. A divider with nothing to do now takes up no room, without being removed from the menu bar, so opening and closing stay smooth however often you do it.
 
 ### Added
 
@@ -14,6 +14,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- While you hold ⌘, a hairline marks where hidden icons begin, just left of the chevron. Icons dropped between it and the chevron stay visible; the divider is no longer moved back beside the chevron behind your back.
 - The first-launch tips are now an animated how-to played in the menu bar beside the chevron: holding ⌘ and dragging an icon past the chevron to hide it. It plays three times, stops on any click or when you hold ⌘, and **How to Arrange…** plays it again.
 
 ## [0.3.0] - 2026-10-16

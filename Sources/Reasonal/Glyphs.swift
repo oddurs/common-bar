@@ -50,6 +50,21 @@ enum Glyphs {
         return image
     }
 
+    enum Line {
+        static let canvas = NSSize(width: 1, height: 12)
+    }
+
+    /// A hairline, shown only while arranging, marking where hidden icons begin.
+    static let line: NSImage = {
+        let image = NSImage(size: Line.canvas, flipped: false) { rect in
+            NSColor.black.setFill()
+            rect.fill()
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }()
+
     /// Fine dots, so the always-hidden boundary reads as a mark rather than an icon.
     static let dottedLine: NSImage = {
         let image = NSImage(size: DottedLine.canvas, flipped: false) { rect in

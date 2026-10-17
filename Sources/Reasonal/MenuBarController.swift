@@ -1,40 +1,31 @@
 import AppKit
 import BarKit
 
-/// Three status items, right to left: a chevron that toggles, an invisible divider
-/// kept directly left of it, and a dotted always-hidden divider. Collapsing stretches a
-/// divider so everything left of it is pushed off-screen, so whatever is dragged past
-/// the chevron hides. A normal reveal shrinks only the first divider; ⌥-click or holding
-/// ⌘ shrinks both, and ⌘ also lets the system's own ⌘-drag rearrange them.
+/// Three status items, right to left: a chevron that toggles, a divider left of it, and
+/// an always-hidden divider further left. Collapsing stretches a divider so everything
+/// left of it is pushed off-screen. A normal reveal takes the first divider down to nothing;
+/// ⌥-click shows the always-hidden section too, and holding ⌘ shows both dividers as
+/// marks so icons can be ⌘-dragged across them.
 @MainActor
 final class MenuBarController: NSObject {
     private enum Metric {
         /// Just wide enough for the chevron; macOS adds its own padding either side.
         static let toggleLength: CGFloat = 10
-        /// Wider than macOS's bare padding, so `ChevronLocator` never takes a spacer for the divider.
+        /// About the width of a small icon.
         static let spacerLength: CGFloat = 8
         static let pollInterval: TimeInterval = 1.0 / 30
         static let fadeDuration: TimeInterval = 0.12
-        /// How long Control Center takes to add a new status item before its length can be set.
-        static let settle: TimeInterval = 0.25
     }
 
     private static let onboardedKey = "onboarded"
-    /// Where the always-hidden divider was before it was parked, to put it back there.
-    private static let alwaysDividerHomeKey = "alwaysDividerHome"
+    /// Written by an earlier version that moved the always-hidden divider aside; cleared on launch.
+    private static let retiredAlwaysDividerHomeKey = "alwaysDividerHome"
 
     private let toggle: NSStatusItem
-    private var divider: NSStatusItem
-    private var alwaysDivider: NSStatusItem
+    private let divider: DividerItem
+    private let alwaysDivider: DividerItem
     private var chevronPointsLeft: Bool?
     private var spacers: [NSStatusItem] = []
-    private var dividerParked = false
-    /// Whether saved positions should be checked for icons dropped beside the chevron.
-    /// Only a ⌘-drag can put one there, so this is set at launch and when a peek ends.
-    private var checkPin = true
-    /// Items recreated during the current layout pass, by name.
-    private var recreatedThisPass: Set<String> = []
-    private var alwaysDividerParked = UserDefaults.standard.object(forKey: alwaysDividerHomeKey) != nil
     private var syncingSpacers = false
     private var reveal: Reveal
     private var peek = Peek()
@@ -53,9 +44,11 @@ final class MenuBarController: NSObject {
         Self.seedPositions()
         reveal = Reveal(isCollapsed: UserDefaults.standard.bool(forKey: Self.onboardedKey))
 
+        UserDefaults.standard.removeObject(forKey: Self.retiredAlwaysDividerHomeKey)
+        DividerItem.markVisible(ItemName.toggle)
         toggle = NSStatusBar.system.statusItem(withLength: Metric.toggleLength)
-        divider = Self.makeDivider()
-        alwaysDivider = Self.makeAlwaysDivider()
+        divider = DividerItem(named: ItemName.divider, marker: Glyphs.line)
+        alwaysDivider = DividerItem(named: ItemName.alwaysDivider, marker: Glyphs.dottedLine)
         super.init()
 
         toggle.autosaveName = ItemName.toggle
@@ -86,8 +79,7 @@ final class MenuBarController: NSObject {
         syncSpacers()
         apply(animated: false)
 
-        // Give the status bar a moment to lay the items out: the how-to plays beside the
-        // chevron, and pinning the divider needs the chevron's width.
+        // Give the status bar a moment to lay the items out: the how-to plays beside the chevron.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             MainActor.assumeIsolated {
                 guard let self else { return }
@@ -138,40 +130,21 @@ final class MenuBarController: NSObject {
 
     private func apply(animated: Bool = true) {
         let motion = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        if reveal.isCollapsed && !peek.isPeeking { pinDivider() }
         let alwaysHidden = Preferences.isOn(Preferences.alwaysHiddenSection)
-        var layout = DividerLayout(
+        let layout = DividerLayout(
             reveal: reveal, isPeeking: peek.isPeeking, positions: Self.positions, alwaysHidden: alwaysHidden)
-        if layout.parksDivider { parkDivider() }
-        if layout.parksAlwaysDivider != alwaysDividerParked {
-            layout.parksAlwaysDivider ? parkAlwaysDivider() : unparkAlwaysDivider()
-            // Unparking moves it, which changes whether it is in order.
-            layout = DividerLayout(
-                reveal: reveal, isPeeking: peek.isPeeking, positions: Self.positions, alwaysHidden: alwaysHidden)
-        }
-        // A length set in the pass that creates an item is dropped as Control Center adds it
-        // to the bar, and setting the same length again later is a no-op, so a recreated
-        // item keeps its creation length now and gets its real one once it has settled.
-        if !recreatedThisPass.contains(ItemName.divider) { divider.length = layout.dividerLength }
-        if !recreatedThisPass.contains(ItemName.alwaysDivider) { alwaysDivider.length = layout.alwaysDividerLength }
-        if !recreatedThisPass.isEmpty {
-            recreatedThisPass = []
-            DispatchQueue.main.asyncAfter(deadline: .now() + Metric.settle) { [weak self] in
-                MainActor.assumeIsolated { self?.apply(animated: false) }
-            }
-        }
-        alwaysDivider.button?.setAccessibilityElement(alwaysHidden)
+        divider.set(layout.divider)
+        alwaysDivider.set(layout.alwaysDivider)
 
         NSAnimationContext.runAnimationGroup { context in
             context.duration = motion ? Metric.fadeDuration : 0
-            alwaysDivider.button?.animator().alphaValue = layout.showsAlwaysDivider ? 1 : 0
             // Spacers are blank except while arranging, so they can be found and dragged.
             for spacer in spacers {
                 spacer.button?.animator().alphaValue = peek.isPeeking ? 1 : 0
             }
         }
 
-        // Swapped outright, as other menu bar icons do; the divider fade carries the motion.
+        // Swapped outright, as other menu bar icons do.
         guard reveal.isCollapsed != chevronPointsLeft else { return }
         chevronPointsLeft = reveal.isCollapsed
         toggle.button?.image = reveal.isCollapsed ? Glyphs.chevronLeft : Glyphs.chevronRight
@@ -183,79 +156,6 @@ final class MenuBarController: NSObject {
             toggle: position(of: ItemName.toggle),
             divider: position(of: ItemName.divider),
             alwaysDivider: position(of: ItemName.alwaysDivider))
-    }
-
-    private static func makeDivider() -> NSStatusItem {
-        let item = NSStatusBar.system.statusItem(withLength: 0)
-        item.autosaveName = ItemName.divider
-        item.button?.setAccessibilityElement(false)
-        return item
-    }
-
-    private static func makeAlwaysDivider() -> NSStatusItem {
-        let item = NSStatusBar.system.statusItem(withLength: 0)
-        item.autosaveName = ItemName.alwaysDivider
-        item.button?.image = Glyphs.dottedLine
-        item.button?.appearsDisabled = true
-        item.button?.setAccessibilityLabel("Always-hidden items divider")
-        return item
-    }
-
-    /// Moves a status item by recreating it: an item takes its saved position only when created.
-    private func recreate(
-        _ item: NSStatusItem, named name: String, at position: Double, using make: () -> NSStatusItem
-    ) -> NSStatusItem {
-        recreatedThisPass.insert(name)
-        NSStatusBar.system.removeStatusItem(item)
-        UserDefaults.standard.set(position, forKey: Self.positionKey(name))
-        return make()
-    }
-
-    private func parkDivider() {
-        guard !dividerParked else { return }
-        divider = recreate(divider, named: ItemName.divider, at: ItemPositions.parked) { Self.makeDivider() }
-        dividerParked = true
-    }
-
-    private func parkAlwaysDivider() {
-        guard !alwaysDividerParked else { return }
-        UserDefaults.standard.set(Self.position(of: ItemName.alwaysDivider), forKey: Self.alwaysDividerHomeKey)
-        alwaysDivider = recreate(
-            alwaysDivider, named: ItemName.alwaysDivider, at: ItemPositions.parked, using: Self.makeAlwaysDivider)
-        alwaysDividerParked = true
-    }
-
-    /// Back where it was before it was parked, or just left of the divider the first time.
-    private func unparkAlwaysDivider() {
-        guard alwaysDividerParked else { return }
-        let defaults = UserDefaults.standard
-        let home =
-            defaults.object(forKey: Self.alwaysDividerHomeKey) as? Double ?? Self.position(of: ItemName.divider) + 1
-        defaults.removeObject(forKey: Self.alwaysDividerHomeKey)
-        alwaysDivider = recreate(
-            alwaysDivider, named: ItemName.alwaysDivider, at: home, using: Self.makeAlwaysDivider)
-        alwaysDividerParked = false
-    }
-
-    /// Moves the divider back directly left of the chevron when icons were dropped
-    /// between them, so dragging an icon past the chevron is what hides it. A status
-    /// item takes its saved position only when created, so the divider is recreated.
-    private func pinDivider() {
-        guard let width = toggle.button?.window?.frame.width else { return }
-        // Saved positions are only read when an icon may have moved: just after the divider
-        // is recreated, removing the old item can still write its last position back.
-        let target: Double?
-        if dividerParked {
-            target = Self.position(of: ItemName.toggle) + 1
-        } else if checkPin {
-            target = Self.positions.dividerRepin(toggleWidth: Double(width))
-        } else {
-            target = nil
-        }
-        checkPin = false
-        guard let target else { return }
-        divider = recreate(divider, named: ItemName.divider, at: target) { Self.makeDivider() }
-        dividerParked = false
     }
 
     private func preferencesChanged() {
@@ -287,6 +187,7 @@ final class MenuBarController: NSObject {
                 UserDefaults.standard.set(
                     Spacers.seedPosition(toggle: Self.position(of: ItemName.toggle)), forKey: Self.positionKey(name))
             }
+            DividerItem.markVisible(name)
             let item = NSStatusBar.system.statusItem(withLength: Metric.spacerLength)
             item.autosaveName = name
             item.button?.image = Glyphs.spacer
@@ -342,7 +243,7 @@ final class MenuBarController: NSObject {
 
         if peek.update(commandOnly: commandOnly, inMenuBar: inMenuBar, mouseDown: mouseDown, now: now) {
             // Holding ⌘ is the how-to's first step; the user has it from here.
-            if peek.isPeeking { demo.close() } else { checkPin = true }
+            if peek.isPeeking { demo.close() }
             apply()
         }
         if !peek.isPeeking {
@@ -436,21 +337,16 @@ final class MenuBarController: NSObject {
     private func playDemo(attemptsLeft: Int) {
         guard !demo.isShowing, let button = toggle.button, let screen = NSScreen.main ?? NSScreen.screens.first
         else { return }
-        guard let chevron = MenuBar.chevronFrame(on: screen, chevronLength: Metric.toggleLength) else {
-            // The chevron is recognised by the divider flush against it, which is parked
-            // while revealed; bring it back at zero length while looking.
-            if dividerParked {
-                divider = recreate(divider, named: ItemName.divider, at: Self.position(of: ItemName.toggle) + 1) {
-                    Self.makeDivider()
-                }
-                dividerParked = false
-            }
+        // AppKit's frame for a status item can lag where Control Center has put it, so it is
+        // trusted only once the window server shows an item at the same place.
+        guard let window = button.window, MenuBar.hasStatusItem(at: window.frame, on: screen) else {
             guard attemptsLeft > 0 else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
                 MainActor.assumeIsolated { self?.playDemo(attemptsLeft: attemptsLeft - 1) }
             }
             return
         }
+        let chevron = window.frame
         collapseTimer?.invalidate()
         reveal.expand()
         apply()
