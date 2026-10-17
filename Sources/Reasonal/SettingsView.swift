@@ -6,7 +6,7 @@ import SwiftUI
 struct SettingsView: View {
     @AppStorage(Preferences.showOnHover) private var showOnHover = true
     @AppStorage(Preferences.showOnScroll) private var showOnScroll = true
-    @AppStorage(Preferences.showOnClick) private var showOnClick = true
+    @AppStorage(Preferences.showOnClick) private var showOnClick = false
     @AppStorage(Preferences.autoHide) private var autoHide = AutoHide.standard
     @AppStorage(Preferences.alwaysHiddenSection) private var alwaysHiddenSection = false
     @AppStorage(Preferences.spacers) private var spacerCount = 0

@@ -13,7 +13,7 @@ enum Preferences {
         UserDefaults.standard.register(defaults: [
             showOnHover: true,
             showOnScroll: true,
-            showOnClick: true,
+            showOnClick: false,
             autoHide: AutoHide.standard.rawValue,
             alwaysHiddenSection: false,
             spacers: 0,
