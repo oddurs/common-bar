@@ -14,6 +14,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- Smoother opening and closing. Hidden icons glide in from just past the screen's edge instead of from thousands of points away, the chevron turns with a gentle spring to point the way they go, and the ⌘ hairline fades in.
 - While you hold ⌘, a hairline marks where hidden icons begin, just left of the chevron. Icons dropped between it and the chevron stay visible; the divider is no longer moved back beside the chevron behind your back.
 - The first-launch tips are now an animated how-to played in the menu bar beside the chevron: holding ⌘ and dragging an icon past the chevron to hide it. It plays three times, stops on any click or when you hold ⌘, and **How to Arrange…** plays it again.
 
