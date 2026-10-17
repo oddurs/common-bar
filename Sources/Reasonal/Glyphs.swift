@@ -27,14 +27,12 @@ enum Glyphs {
         static let dash: [CGFloat] = [2, 2]
     }
 
-    static let chevronLeft = chevron(pointingLeft: true)
-    static let chevronRight = chevron(pointingLeft: false)
-
-    /// A right-angled chevron with a mitred tip and square ends, centred vertically.
-    private static func chevron(pointingLeft: Bool) -> NSImage {
+    /// A right-angled chevron pointing left, with a mitred tip and square ends, centred
+    /// vertically. Turned half a revolution to point right while the hidden icons show.
+    static let chevron: NSImage = {
         let image = NSImage(size: Chevron.canvas, flipped: false) { rect in
-            let tipX = pointingLeft ? rect.minX + Chevron.tipInset : rect.maxX - Chevron.tipInset
-            let endX = pointingLeft ? tipX + Chevron.arm : tipX - Chevron.arm
+            let tipX = rect.minX + Chevron.tipInset
+            let endX = tipX + Chevron.arm
             let path = NSBezierPath()
             path.move(to: NSPoint(x: endX, y: rect.midY + Chevron.arm))
             path.line(to: NSPoint(x: tipX, y: rect.midY))
@@ -48,7 +46,7 @@ enum Glyphs {
         }
         image.isTemplate = true
         return image
-    }
+    }()
 
     enum Line {
         static let canvas = NSSize(width: 1, height: 12)

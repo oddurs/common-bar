@@ -15,6 +15,23 @@ import Testing
             reveal: reveal, isPeeking: peeking, positions: positions ?? seeded, alwaysHidden: alwaysHidden)
     }
 
+    @Test func aDividerReachesJustPastTheScreensLeftEdge() {
+        // Measured on Tahoe: the divider ends at 1136 on a screen starting at 0, and macOS
+        // pads each item by 16 pt.
+        let reach = DividerLayout.reach(dividerEnd: 1136, screenMinX: 0, padding: 16)
+        #expect(reach == 1184)
+        // The stretched item then starts 64 pt left of the screen, so every icon is off it.
+        #expect(1136 - (reach + 16) == -64)
+    }
+
+    @Test func aDividerOnAScreenFurtherRightReachesFromThatScreensEdge() {
+        #expect(DividerLayout.reach(dividerEnd: 2864, screenMinX: 1728, padding: 16) == 1184)
+    }
+
+    @Test func theReachNeverExceedsTheFullStretch() {
+        #expect(DividerLayout.reach(dividerEnd: 20_000, screenMinX: 0, padding: 16) == DividerLayout.stretchedLength)
+    }
+
     @Test func collapsedBothDividersStretch() {
         let l = layout(collapsed: true)
         #expect(l.divider == .stretched)

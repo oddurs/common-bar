@@ -15,6 +15,9 @@ final class DividerItem {
         /// The width left when taken down to nothing. Zero would let the window vanish.
         static let collapsedWidth: CGFloat = 1
         static let markerWidth: CGFloat = 4
+        /// What macOS adds to an item's length while its padding constraint is on, measured on Tahoe.
+        static let padding: CGFloat = 16
+        static let markerFade: TimeInterval = 0.15
     }
 
     let item: NSStatusItem
@@ -53,16 +56,18 @@ final class DividerItem {
 
     /// Writes only what changed: every status item update on Tahoe is a Control Center
     /// round trip, and repeating them leaks system resources.
-    func set(_ newState: DividerState) {
+    func set(_ newState: DividerState, animated: Bool) {
         guard newState != state, let button = item.button else { return }
         state = newState
         setIfChanged(button, \.isHighlighted, false)
         switch newState {
         case .stretched:
+            // Measured before stretching, while the item still sits where it ends.
+            let length = reach
             setIfChanged(button, \.image, nil)
             setIfChanged(button, \.alphaValue, 0)
             paddingConstraint?.isActive = true
-            setIfChanged(item, \.length, DividerLayout.stretchedLength)
+            setIfChanged(item, \.length, length)
         case .collapsed:
             setIfChanged(button, \.alphaValue, 0)
             paddingConstraint?.isActive = false
@@ -70,11 +75,24 @@ final class DividerItem {
             setWindowWidth(Metric.collapsedWidth)
         case .marker:
             setIfChanged(button, \.image, marker)
-            setIfChanged(button, \.alphaValue, 1)
             paddingConstraint?.isActive = false
             setIfChanged(item, \.length, Metric.markerWidth)
             setWindowWidth(Metric.markerWidth)
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = animated ? Metric.markerFade : 0
+                button.animator().alphaValue = 1
+            }
         }
+    }
+
+    /// See `DividerLayout.reach`. The full stretch until AppKit's frame for the item agrees
+    /// with where the window server has it.
+    private var reach: CGFloat {
+        guard let window = item.button?.window, let screen = window.screen,
+            MenuBar.hasStatusItem(at: window.frame, on: screen)
+        else { return DividerLayout.stretchedLength }
+        return DividerLayout.reach(
+            dividerEnd: window.frame.maxX, screenMinX: screen.frame.minX, padding: Metric.padding)
     }
 
     private func setWindowWidth(_ width: CGFloat) {
