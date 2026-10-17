@@ -10,4 +10,6 @@ Report it privately through [GitHub Security Advisories](https://github.com/oddu
 
 You'll get an acknowledgement within a week. If the report is confirmed, a fix ships in a new release and the advisory is published with credit, unless you'd rather stay anonymous.
 
+<!-- standard:begin surface -->
 Common Bar runs unprivileged, asks for no permissions, and makes no network connections. It watches mouse and scroll events globally to notice the pointer in the menu bar, and reads the window list to find empty menu bar space. Reports about either are welcome.
+<!-- standard:end surface -->
