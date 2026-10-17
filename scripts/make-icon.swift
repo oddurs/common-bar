@@ -111,6 +111,7 @@ func rounded(_ r: CGRect, _ radius: CGFloat) -> CGPath {
 
 // MARK: - Glyph
 
+// standard:begin glyph
 func glyph(_ ctx: CGContext) {
     // A menu bar strip: hidden items fading out to the left of the divider, the chevron, then visible items.
     let strip = CGRect(x: 172, y: 402, width: 680, height: 220)
@@ -132,6 +133,7 @@ func glyph(_ ctx: CGContext) {
         }
     }
 }
+// standard:end glyph
 
 func render(_ px: Int, _ glyph: (CGContext) -> Void) -> Data {
     let rep = NSBitmapImageRep(
