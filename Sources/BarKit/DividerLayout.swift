@@ -33,65 +33,53 @@ public struct ItemPositions: Equatable, Sendable {
         let divider = divider ?? toggle + 1
         return ItemPositions(toggle: toggle, divider: divider, alwaysDivider: alwaysDivider ?? divider + 1)
     }
-
-    /// The chevron is the boundary: anything dragged past it should hide. So the divider
-    /// that does the hiding belongs directly left of the toggle, where macOS saves it at
-    /// most one toggle-width further left. Returns where to move it when an icon has been
-    /// dropped between them or the divider has strayed right of the toggle, else nil.
-    /// A freshly placed divider is saved just 1 further left until macOS rewrites it, so
-    /// anything up to a toggle-width away counts as in place.
-    public func dividerRepin(toggleWidth: Double) -> Double? {
-        let inPlace = divider > toggle && divider <= toggle + toggleWidth + Self.tolerance
-        return inPlace ? nil : toggle + 1
-    }
-
-    static let tolerance = 2.0
-
-    /// Beyond every other status item. A divider with nothing to do waits here: even at
-    /// zero length macOS pads it, and that blank gap would otherwise sit among the icons.
-    public static let parked: Double = 100_000
 }
 
-/// How wide each divider is and whether the always-hidden line shows. A stretched
-/// divider pushes everything left of it off-screen. The first divider never shows: the
-/// chevron beside it marks that boundary. With the always-hidden section turned off, its
-/// divider stays at zero width, so the icons behind it hide and show with the rest.
-public struct DividerLayout: Equatable, Sendable {
-    public static let hiddenLength: CGFloat = 10_000
-    /// The dotted line's item width; macOS adds its own padding either side.
-    public static let visibleLength: CGFloat = 4
+/// How a divider sits in the menu bar. A divider is never removed or hidden with
+/// `isVisible`: on Tahoe either one is how the system records a user taking an item out
+/// of the menu bar, and it forgets where the item was.
+public enum DividerState: Equatable, Sendable {
+    /// Stretched far wider than any screen, pushing everything left of it off-screen.
+    case stretched
+    /// Taken down to nothing: still holding its place, but leaving no gap among the icons.
+    case collapsed
+    /// A slim mark, so the boundary can be seen while arranging.
+    case marker
+}
 
-    public var dividerLength: CGFloat
-    public var alwaysDividerLength: CGFloat
-    public var showsAlwaysDivider: Bool
-    /// While the hidden items show, the divider has nothing to do, so it is parked.
-    public var parksDivider: Bool
-    /// The always-hidden divider is parked while its section is off.
-    public var parksAlwaysDivider: Bool
+/// Where each divider stands for a given reveal. The chevron never changes; the dividers
+/// left of it do the hiding.
+public struct DividerLayout: Equatable, Sendable {
+    public static let stretchedLength: CGFloat = 10_000
+
+    public var divider: DividerState
+    public var alwaysDivider: DividerState
 
     public init(reveal: Reveal, isPeeking: Bool, positions: ItemPositions, alwaysHidden: Bool) {
         let revealed = isPeeking || !reveal.isCollapsed
         let revealsAll = isPeeking || (revealed && reveal.showsAlwaysHidden)
-        parksDivider = revealed
-        parksAlwaysDivider = !alwaysHidden
-        guard alwaysHidden else {
-            dividerLength = revealed ? 0 : Self.length(hiding: positions.divider > positions.toggle)
-            alwaysDividerLength = 0
-            showsAlwaysDivider = false
-            return
+
+        if isPeeking {
+            divider = .marker
+        } else if revealed {
+            divider = .collapsed
+        } else {
+            divider = Self.hiding(inOrder: positions.divider > positions.toggle)
         }
-        dividerLength = revealed ? 0 : Self.length(hiding: positions.divider > positions.toggle)
-        // Parked while collapsed too, so a reveal never flashes the always-hidden items. Its
-        // order is checked against the chevron, not the divider: the divider is pinned beside
-        // the chevron, and parked far away while revealed.
-        alwaysDividerLength =
-            revealsAll ? Self.visibleLength : Self.length(hiding: positions.alwaysDivider > positions.toggle)
-        showsAlwaysDivider = revealsAll
+
+        if !alwaysHidden {
+            alwaysDivider = .collapsed
+        } else if revealsAll {
+            alwaysDivider = .marker
+        } else {
+            // Stretched while collapsed too, so a reveal never flashes the always-hidden items.
+            alwaysDivider = Self.hiding(inOrder: positions.alwaysDivider > positions.divider)
+        }
     }
 
-    /// A divider dragged out of order would push the items meant to stay visible
-    /// off-screen with the rest, including the toggle, so it is left unstretched.
-    static func length(hiding inOrder: Bool) -> CGFloat {
-        inOrder ? hiddenLength : 0
+    /// A divider dragged out of order would push the icons meant to stay visible
+    /// off-screen with the rest, so it is left out of the way instead of stretched.
+    static func hiding(inOrder: Bool) -> DividerState {
+        inOrder ? .stretched : .collapsed
     }
 }
